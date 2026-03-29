@@ -1,16 +1,42 @@
 services:
-  identity-service:
-    image: ${IDENTITY_SERVICE_IMAGE}
+  postgres:
+    image: postgres:17-alpine
     restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-identity}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - bazaar-local
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-identity}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  identity-service:
+    build:
+      context: ../../bazaar-backend/services/identity-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       PORT: ${IDENTITY_SERVICE_PORT:-8080}
       SERVICE_NAME: identity-service
-      DB_URL: ${DB_URL}
-      JWT_SECRET: ${JWT_SECRET}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      DEPENDENCY_TARGETS: ""
+      DEPENDENCY_TARGETS: postgres:5432
     networks:
-      - bazaar-release
+      - bazaar-local
     healthcheck:
       test:
         [
@@ -23,21 +49,21 @@ services:
       start_period: 10s
 
   api-gateway:
-    image: ${API_GATEWAY_IMAGE}
+    build:
+      context: ../../bazaar-backend/api-gateway
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       identity-service:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${API_GATEWAY_PORT:-8080}:${API_GATEWAY_PORT:-8080}"
     environment:
       PORT: ${API_GATEWAY_PORT:-8080}
       SERVICE_NAME: api-gateway
-      JWT_SECRET: ${JWT_SECRET}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       IDENTITY_SERVICE_URL: http://identity-service:${IDENTITY_SERVICE_PORT:-8080}
     networks:
-      - bazaar-release
+      - bazaar-local
     healthcheck:
       test:
         [
@@ -50,5 +76,8 @@ services:
       start_period: 10s
 
 networks:
-  bazaar-release:
+  bazaar-local:
     driver: bridge
+
+volumes:
+  postgres-data:

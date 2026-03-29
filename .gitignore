@@ -1,4 +1,4 @@
-.env.staging
+.env.local
 .env
 
 .DS_Store

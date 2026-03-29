@@ -18,38 +18,44 @@ jobs:
       - name: Generate CI env file
         run: |
           cat > .env.ci <<'EOF'
-          API_GATEWAY_IMAGE=ghcr.io/example/bazaar-api-gateway:sha-dummy
-          IDENTITY_SERVICE_IMAGE=ghcr.io/example/bazaar-identity-service:sha-dummy
           API_GATEWAY_PORT=8080
           IDENTITY_SERVICE_PORT=8080
-          DB_URL='postgresql://user:password@host/db?sslmode=require'
-          JWT_SECRET='dummy-jwt-secret'
-          CORS_ALLOWED_ORIGINS='https://staging.example.com'
+          POSTGRES_DB=identity
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          POSTGRES_PORT=5433
+          VITE_API_BASE_URL=http://localhost:8080
           EOF
 
       - name: Validate compose syntax
-        run: docker compose --env-file .env.ci -f compose/docker-compose.release.yml config
+        run: docker compose --env-file .env.ci -f compose/docker-compose.local.yml config
 
-      - name: Validate documented variables
+      - name: Validate documented local variables
         run: |
           required_keys=(
-            STAGING_HOST
-            STAGING_USER
-            STAGING_DB_URL
-            STAGING_JWT_SECRET
-            STAGING_CORS_ALLOWED_ORIGINS
-            GHCR_USERNAME
-            GHCR_TOKEN
-            API_GATEWAY_IMAGE
-            IDENTITY_SERVICE_IMAGE
+            API_GATEWAY_PORT
+            IDENTITY_SERVICE_PORT
+            POSTGRES_DB
+            POSTGRES_USER
+            POSTGRES_PASSWORD
+            POSTGRES_PORT
+            VITE_API_BASE_URL
           )
 
           for key in "${required_keys[@]}"; do
-            if ! grep -Eq "^${key}=" .env.staging.example; then
-              printf 'Missing required key in .env.staging.example: %s\n' "$key" >&2
+            if ! grep -Eq "^${key}=" .env.local.example; then
+              printf 'Missing required key in .env.local.example: %s\n' "$key" >&2
               exit 1
             fi
           done
+
+      - name: Validate backoffice typecheck
+        run: |
+          npm --prefix ../bazaar-backoffice run typecheck
+
+      - name: Validate backoffice build
+        run: |
+          npm --prefix ../bazaar-backoffice run build
 
       - name: Cleanup CI env file
         if: always()

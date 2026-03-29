@@ -1,40 +1,49 @@
-.PHONY: validate compose-config deploy-staging-local
+.PHONY: validate up-local down-local smoke-local backoffice-check backoffice-dev compose-config
 
 validate:
 	@tmp_env="$$(mktemp)"; \
 	trap 'rm -f "$$tmp_env"' EXIT; \
 	printf '%s\n' \
-		"API_GATEWAY_IMAGE=ghcr.io/example/bazaar-api-gateway:sha-dummy" \
-		"IDENTITY_SERVICE_IMAGE=ghcr.io/example/bazaar-identity-service:sha-dummy" \
 		"API_GATEWAY_PORT=8080" \
 		"IDENTITY_SERVICE_PORT=8080" \
-		"DB_URL='postgresql://user:password@host/db?sslmode=require'" \
-		"JWT_SECRET='dummy-jwt-secret'" \
-		"CORS_ALLOWED_ORIGINS='https://staging.example.com'" \
+		"POSTGRES_DB=identity" \
+		"POSTGRES_USER=postgres" \
+		"POSTGRES_PASSWORD=postgres" \
+		"POSTGRES_PORT=5433" \
+		"VITE_API_BASE_URL=http://localhost:8080" \
 	> "$$tmp_env"; \
-	docker compose --env-file "$$tmp_env" -f compose/docker-compose.release.yml config >/dev/null; \
+	docker compose --env-file "$$tmp_env" -f compose/docker-compose.local.yml config >/dev/null; \
 	for key in \
-		STAGING_HOST \
-		STAGING_USER \
-		STAGING_DB_URL \
-		STAGING_JWT_SECRET \
-		STAGING_CORS_ALLOWED_ORIGINS \
-		GHCR_USERNAME \
-		GHCR_TOKEN \
-		API_GATEWAY_IMAGE \
-		IDENTITY_SERVICE_IMAGE; do \
-		grep -Eq "^$$key=" .env.staging.example || { \
-			printf 'Missing required key in .env.staging.example: %s\n' "$$key" >&2; \
+		API_GATEWAY_PORT \
+		IDENTITY_SERVICE_PORT \
+		POSTGRES_DB \
+		POSTGRES_USER \
+		POSTGRES_PASSWORD \
+		POSTGRES_PORT \
+		VITE_API_BASE_URL; do \
+		grep -Eq "^$$key=" .env.local.example || { \
+			printf 'Missing required key in .env.local.example: %s\n' "$$key" >&2; \
 			exit 1; \
 		}; \
-	done
+	done; \
+	npm --prefix ../bazaar-backoffice run typecheck >/dev/null; \
+	npm --prefix ../bazaar-backoffice run build >/dev/null
 
 compose-config:
-	@docker compose --env-file .env.staging.example -f compose/docker-compose.release.yml config
+	@docker compose --env-file .env.local.example -f compose/docker-compose.local.yml config
 
-deploy-staging-local:
-	@test -f .env.staging || { \
-		printf '%s\n' "Missing .env.staging in the current directory" >&2; \
-		exit 1; \
-	}
-	@bash scripts/deploy/deploy-staging.sh
+up-local:
+	@bash scripts/local/up-local.sh
+
+down-local:
+	@bash scripts/local/down-local.sh
+
+smoke-local:
+	@bash scripts/local/smoke-local.sh
+
+backoffice-check:
+	@npm --prefix ../bazaar-backoffice run typecheck
+	@npm --prefix ../bazaar-backoffice run build
+
+backoffice-dev:
+	@VITE_API_BASE_URL=http://localhost:8080 npm --prefix ../bazaar-backoffice run dev
