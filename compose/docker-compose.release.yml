@@ -1,0 +1,54 @@
+services:
+  identity-service:
+    image: ${IDENTITY_SERVICE_IMAGE}
+    restart: unless-stopped
+    environment:
+      PORT: ${IDENTITY_SERVICE_PORT:-8080}
+      SERVICE_NAME: identity-service
+      DB_URL: ${DB_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      DEPENDENCY_TARGETS: ""
+    networks:
+      - bazaar-release
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -T 2 -O /dev/null http://127.0.0.1:${IDENTITY_SERVICE_PORT:-8080}/livez || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api-gateway:
+    image: ${API_GATEWAY_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      identity-service:
+        condition: service_started
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:${API_GATEWAY_PORT:-8080}"
+    environment:
+      PORT: ${API_GATEWAY_PORT:-8080}
+      SERVICE_NAME: api-gateway
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      IDENTITY_SERVICE_URL: http://identity-service:${IDENTITY_SERVICE_PORT:-8080}
+    networks:
+      - bazaar-release
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -T 2 -O /dev/null http://127.0.0.1:${API_GATEWAY_PORT:-8080}/livez || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  bazaar-release:
+    driver: bridge
