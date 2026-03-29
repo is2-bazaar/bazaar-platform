@@ -30,10 +30,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate required environment configuration
+        env:
+          STAGING_SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          STAGING_SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
         run: |
           required_vars=(
             STAGING_HOST
             STAGING_USER
+            STAGING_SSH_PRIVATE_KEY
+            STAGING_SSH_KNOWN_HOSTS
             API_GATEWAY_IMAGE
             IDENTITY_SERVICE_IMAGE
             DB_URL
@@ -84,7 +89,6 @@ jobs:
           umask 077
           cat > .env.staging <<'ENVFILE'
           GHCR_USERNAME='$(quote_for_env "${GHCR_USERNAME}")'
-          GHCR_TOKEN='$(quote_for_env "${GHCR_TOKEN}")'
           API_GATEWAY_IMAGE='$(quote_for_env "${API_GATEWAY_IMAGE}")'
           IDENTITY_SERVICE_IMAGE='$(quote_for_env "${IDENTITY_SERVICE_IMAGE}")'
           DB_URL='$(quote_for_env "${DB_URL}")'
@@ -103,7 +107,19 @@ jobs:
           "
 
       - name: Run remote deploy
+        shell: bash
         run: |
-          ssh "${STAGING_USER}@${STAGING_HOST}" "
-            cd '${REMOTE_DIR}' && ./scripts/deploy/deploy-staging.sh
-          "
+          quote_for_shell() {
+            printf "%s" "$1" | sed "s/'/'\\\\''/g"
+          }
+
+          ssh "${STAGING_USER}@${STAGING_HOST}" 'bash -se' <<EOF
+          set -euo pipefail
+          if [ -n '$(quote_for_shell "${GHCR_USERNAME}")' ] && [ -n '$(quote_for_shell "${GHCR_TOKEN}")' ]; then
+            printf '%s' '$(quote_for_shell "${GHCR_TOKEN}")' | docker login ghcr.io -u '$(quote_for_shell "${GHCR_USERNAME}")' --password-stdin >/dev/null
+          else
+            printf '%s\n' 'Skipping ghcr.io login because GHCR_USERNAME/GHCR_TOKEN are not both defined'
+          fi
+          cd '${REMOTE_DIR}'
+          ./scripts/deploy/deploy-staging.sh
+          EOF

@@ -42,13 +42,6 @@ require_var "CORS_ALLOWED_ORIGINS"
 
 skip_pull="${SKIP_DOCKER_PULL:-false}"
 
-if [[ -n "${GHCR_USERNAME:-}" && -n "${GHCR_TOKEN:-}" ]]; then
-  printf '%s\n' "Logging in to ghcr.io as ${GHCR_USERNAME}"
-  printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin >/dev/null
-else
-  printf '%s\n' "Skipping ghcr.io login because GHCR_USERNAME/GHCR_TOKEN are not both defined"
-fi
-
 if [[ "$skip_pull" == "true" ]]; then
   printf '%s\n' "Skipping docker compose pull because SKIP_DOCKER_PULL=true"
 else
