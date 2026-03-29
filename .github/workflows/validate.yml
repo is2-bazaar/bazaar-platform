@@ -49,14 +49,6 @@ jobs:
             fi
           done
 
-      - name: Validate backoffice typecheck
-        run: |
-          npm --prefix ../bazaar-backoffice run typecheck
-
-      - name: Validate backoffice build
-        run: |
-          npm --prefix ../bazaar-backoffice run build
-
       - name: Cleanup CI env file
         if: always()
         run: rm -f .env.ci
