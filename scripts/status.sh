@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/common.sh"
+
+load_platform_env
+
+platform_info "backend path: $BAZAAR_BACKEND_PATH"
+platform_info "backoffice path: $BAZAAR_BACKOFFICE_PATH"
+platform_info "mobile path: $BAZAAR_MOBILE_PATH"
+
+if [[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh" ]]; then
+  bash "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh"
+else
+  platform_warn "no se encontro scripts/dev/status.sh en bazaar-backend"
+fi
+
+if curl -fsS "$BACKOFFICE_DEV_URL" >/dev/null 2>&1; then
+  platform_ok "backoffice responde en $BACKOFFICE_DEV_URL"
+else
+  platform_warn "backoffice no responde en $BACKOFFICE_DEV_URL"
+fi
