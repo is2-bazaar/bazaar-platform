@@ -19,6 +19,19 @@ fi
 platform_ok "docker, docker compose, node, npm y curl disponibles"
 platform_ok "defaults cargados correctamente"
 
+require_env ENV_NAME
+require_env BACKEND_PROVIDER
+require_env DATABASE_PROVIDER
+require_env BACKOFFICE_PROVIDER
+require_env MOBILE_RUNTIME_MODE
+require_env MOBILE_API_BASE_URL
+
+if [[ "$ENV_NAME" != "local" ]]; then
+  platform_fail "ENV_NAME debe ser local para el runtime ejecutable de bazaar-platform"
+fi
+
+platform_ok "contrato local de ambiente detectado para $ENV_NAME"
+
 [[ -d "$BAZAAR_BACKEND_PATH" ]] || platform_fail "no se encontro bazaar-backend en $BAZAAR_BACKEND_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
 
