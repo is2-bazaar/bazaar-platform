@@ -18,6 +18,43 @@ Contrato operativo esperado:
 - scripts de desarrollo estables
 - gateway accesible en `LOCAL_API_BASE_URL`
 
+## Interfaz estable de backend para `platform`
+
+### Inputs esperados
+
+- repo `bazaar-backend` disponible en `BAZAAR_BACKEND_PATH`
+- scripts ejecutables:
+  - `scripts/dev/up.sh`
+  - `scripts/dev/down.sh`
+  - `scripts/dev/status.sh`
+- gateway accesible en `LOCAL_API_BASE_URL`
+
+### Outputs esperados
+
+- `up.sh`: deja el backend arriba y devuelve exit code 0
+- `down.sh`: apaga el backend y devuelve exit code 0
+- `status.sh`: imprime estado del compose y checks basicos del gateway
+
+### Significado de `ready`
+
+Para `platform`, el backend esta `ready` cuando el gateway responde exitosamente en:
+
+- `GET $LOCAL_API_BASE_URL/readyz`
+
+`platform` no inspecciona microservicios individuales ni nombres internos del backend.
+
+### Que puede cambiar sin romper a `platform`
+
+- nombres de microservicios internos
+- topologia interna del compose
+- detalles de bases de datos internas
+
+### Que no puede cambiar sin actualizar `platform`
+
+- ubicacion o existencia de `scripts/dev/up.sh`, `down.sh`, `status.sh`
+- existencia del gateway en `LOCAL_API_BASE_URL`
+- semantica operativa de `/readyz` como señal de backend listo
+
 ## Unidad local: backoffice
 
 El backoffice se ejecuta fuera de Docker:
@@ -44,6 +81,14 @@ El backoffice se ejecuta fuera de Docker:
 - `BAZAAR_MOBILE_PATH`
 - `LOCAL_API_BASE_URL`
 - `BACKOFFICE_DEV_URL`
+
+### Defaults efectivos
+
+- `BAZAAR_BACKEND_PATH=../bazaar-backend`
+- `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
+- `BAZAAR_MOBILE_PATH=../bazaar-mobile`
+- `LOCAL_API_BASE_URL=http://localhost:8080`
+- `BACKOFFICE_DEV_URL=http://localhost:5173`
 
 ### En backend
 

@@ -46,9 +46,13 @@ resolve_from_root() {
 
 load_platform_env() {
   PLATFORM_ROOT="$(platform_root)"
+  local defaults_file
+
+  defaults_file="$PLATFORM_ROOT/defaults.env"
+  [[ -f "$defaults_file" ]] || platform_fail "falta defaults.env en $PLATFORM_ROOT"
 
   # shellcheck disable=SC1091
-  source "$PLATFORM_ROOT/.env.example"
+  source "$defaults_file"
 
   if [[ -f "$PLATFORM_ROOT/.env.local" ]]; then
     # shellcheck disable=SC1091
@@ -60,6 +64,12 @@ load_platform_env() {
   BAZAAR_MOBILE_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_MOBILE_PATH}")"
   LOCAL_API_BASE_URL="${LOCAL_API_BASE_URL%/}"
   BACKOFFICE_DEV_URL="${BACKOFFICE_DEV_URL%/}"
+
+  require_env BAZAAR_BACKEND_PATH
+  require_env BAZAAR_BACKOFFICE_PATH
+  require_env BAZAAR_MOBILE_PATH
+  require_env LOCAL_API_BASE_URL
+  require_env BACKOFFICE_DEV_URL
 }
 
 require_command() {
@@ -67,6 +77,14 @@ require_command() {
 
   if ! command -v "$command_name" >/dev/null 2>&1; then
     platform_fail "falta el comando requerido: $command_name"
+  fi
+}
+
+require_env() {
+  local variable_name="$1"
+
+  if [[ -z "${!variable_name:-}" ]]; then
+    platform_fail "falta la variable requerida: $variable_name"
   fi
 }
 

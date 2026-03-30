@@ -10,11 +10,25 @@ load_platform_env
 platform_info "backend path: $BAZAAR_BACKEND_PATH"
 platform_info "backoffice path: $BAZAAR_BACKOFFICE_PATH"
 platform_info "mobile path: $BAZAAR_MOBILE_PATH"
+platform_info "api base url efectiva: $LOCAL_API_BASE_URL"
+platform_info "backoffice dev url efectiva: $BACKOFFICE_DEV_URL"
 
 if [[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh" ]]; then
   bash "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh"
 else
   platform_warn "no se encontro scripts/dev/status.sh en bazaar-backend"
+fi
+
+if curl -fsS "$LOCAL_API_BASE_URL/livez" >/dev/null 2>&1; then
+  platform_ok "gateway responde en $LOCAL_API_BASE_URL/livez"
+else
+  platform_warn "gateway no responde en $LOCAL_API_BASE_URL/livez"
+fi
+
+if curl -fsS "$LOCAL_API_BASE_URL/readyz" >/dev/null 2>&1; then
+  platform_ok "gateway responde en $LOCAL_API_BASE_URL/readyz"
+else
+  platform_warn "gateway no responde en $LOCAL_API_BASE_URL/readyz"
 fi
 
 if curl -fsS "$BACKOFFICE_DEV_URL" >/dev/null 2>&1; then

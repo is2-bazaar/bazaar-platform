@@ -16,7 +16,8 @@ No orquesta `mobile`, no resuelve cloud y no contiene logica de negocio.
 
 ```text
 .
-├── .env.example
+├── defaults.env
+├── .env.local.example
 ├── docs/
 │   └── local-runtime.md
 └── scripts/
@@ -36,7 +37,17 @@ cd ../bazaar-backoffice
 npm install
 ```
 
-Si necesitás overrides locales de paths o URLs, creá `.env.local` en este repo. En el caso feliz, los defaults de `.env.example` asumen que todos los repos viven como hermanos.
+`defaults.env` es el archivo ejecutable de defaults del repo. Los scripts lo cargan con `source`.
+
+Si necesitás overrides locales de paths o URLs, copiá `.env.local.example` como `.env.local` y ajustalo. En el caso feliz, los defaults asumen que todos los repos viven como hermanos.
+
+Defaults operativos:
+
+- `BAZAAR_BACKEND_PATH=../bazaar-backend`
+- `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
+- `BAZAAR_MOBILE_PATH=../bazaar-mobile`
+- `LOCAL_API_BASE_URL=http://localhost:8080`
+- `BACKOFFICE_DEV_URL=http://localhost:5173`
 
 1. Validar prerequisitos:
 

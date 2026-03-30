@@ -17,6 +17,7 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 platform_ok "docker, docker compose, node, npm y curl disponibles"
+platform_ok "defaults cargados correctamente"
 
 [[ -d "$BAZAAR_BACKEND_PATH" ]] || platform_fail "no se encontro bazaar-backend en $BAZAAR_BACKEND_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
@@ -46,12 +47,6 @@ if [[ -f "$BAZAAR_BACKOFFICE_PATH/.env.local" ]]; then
   fi
 else
   platform_warn "backoffice no tiene .env.local; backoffice.sh inyectara VITE_API_BASE_URL en runtime"
-fi
-
-if curl -fsS "$LOCAL_API_BASE_URL/livez" >/dev/null 2>&1; then
-  platform_ok "gateway ya responde en $LOCAL_API_BASE_URL"
-else
-  platform_warn "gateway no responde todavia en $LOCAL_API_BASE_URL"
 fi
 
 platform_info "check completo"
