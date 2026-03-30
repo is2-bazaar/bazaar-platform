@@ -11,7 +11,7 @@ load_platform_env
 [[ -f "$BAZAAR_BACKOFFICE_PATH/package.json" ]] || platform_fail "falta package.json en bazaar-backoffice"
 [[ -d "$BAZAAR_BACKOFFICE_PATH/node_modules" ]] || platform_fail "backoffice no tiene dependencias instaladas; ejecutar: cd $BAZAAR_BACKOFFICE_PATH && npm install"
 
-if ! curl -fsS "$LOCAL_API_BASE_URL/livez" >/dev/null 2>&1; then
+if ! http_probe "$LOCAL_API_BASE_URL/livez"; then
   platform_warn "el gateway no responde en $LOCAL_API_BASE_URL; el backoffice arrancara igual"
 fi
 

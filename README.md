@@ -21,6 +21,7 @@ No orquesta `mobile`, no resuelve cloud y no contiene logica de negocio.
 ├── docs/
 │   └── local-runtime.md
 └── scripts/
+    ├── common.sh
     ├── check.sh
     ├── up.sh
     ├── backoffice.sh

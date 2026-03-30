@@ -19,19 +19,19 @@ else
   platform_warn "no se encontro scripts/dev/status.sh en bazaar-backend"
 fi
 
-if curl -fsS "$LOCAL_API_BASE_URL/livez" >/dev/null 2>&1; then
+if http_probe "$LOCAL_API_BASE_URL/livez"; then
   platform_ok "gateway responde en $LOCAL_API_BASE_URL/livez"
 else
   platform_warn "gateway no responde en $LOCAL_API_BASE_URL/livez"
 fi
 
-if curl -fsS "$LOCAL_API_BASE_URL/readyz" >/dev/null 2>&1; then
+if http_probe "$LOCAL_API_BASE_URL/readyz"; then
   platform_ok "gateway responde en $LOCAL_API_BASE_URL/readyz"
 else
   platform_warn "gateway no responde en $LOCAL_API_BASE_URL/readyz"
 fi
 
-if curl -fsS "$BACKOFFICE_DEV_URL" >/dev/null 2>&1; then
+if http_probe "$BACKOFFICE_DEV_URL"; then
   platform_ok "backoffice responde en $BACKOFFICE_DEV_URL"
 else
   platform_warn "backoffice no responde en $BACKOFFICE_DEV_URL"

@@ -20,7 +20,7 @@ platform_fail() {
 platform_root() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  cd "$script_dir/.." && pwd
+  (cd "$script_dir/.." && pwd)
 }
 
 resolve_from_root() {
@@ -34,9 +34,12 @@ resolve_from_root() {
       candidate="$root/$path"
 
       if [[ -d "$candidate" ]]; then
-        cd "$candidate" && pwd
+        (cd "$candidate" && pwd)
       elif [[ -f "$candidate" ]]; then
-        cd "$(dirname "$candidate")" && printf '%s/%s\n' "$(pwd)" "$(basename "$candidate")"
+        (
+          cd "$(dirname "$candidate")" &&
+            printf '%s/%s\n' "$(pwd)" "$(basename "$candidate")"
+        )
       else
         printf '%s\n' "$candidate"
       fi
@@ -88,18 +91,29 @@ require_env() {
   fi
 }
 
+http_probe() {
+  local url="$1"
+
+  curl --connect-timeout 2 --max-time 5 -fsS "$url" >/dev/null 2>&1
+}
+
 wait_for_ready() {
   local url="$1"
   local timeout_seconds="${2:-60}"
-  local elapsed=0
+  local deadline
 
-  while (( elapsed < timeout_seconds )); do
-    if curl -fsS "$url" >/dev/null 2>&1; then
+  deadline=$((SECONDS + timeout_seconds))
+
+  while (( SECONDS < deadline )); do
+    if http_probe "$url"; then
       return 0
     fi
 
+    if (( SECONDS >= deadline )); then
+      break
+    fi
+
     sleep 2
-    elapsed=$((elapsed + 2))
   done
 
   return 1
