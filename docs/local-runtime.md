@@ -4,6 +4,8 @@
 
 `bazaar-platform` existe para orquestar y documentar el entorno integrado local. No es un repo de deploy, no define cloud y no absorbe responsabilidad de los otros repos.
 
+La vista general de ambientes y providers vive en [environments.md](./environments.md). Este documento se enfoca solo en el runtime local.
+
 ## Unidad local: backend
 
 En esta etapa, `platform` trata a `bazaar-backend` como una sola unidad operativa:
@@ -76,19 +78,31 @@ El backoffice se ejecuta fuera de Docker:
 
 ### En `platform`
 
+- `ENV_NAME`
 - `BAZAAR_BACKEND_PATH`
 - `BAZAAR_BACKOFFICE_PATH`
 - `BAZAAR_MOBILE_PATH`
+- `BACKEND_PROVIDER`
+- `DATABASE_PROVIDER`
+- `BACKOFFICE_PROVIDER`
+- `MOBILE_RUNTIME_MODE`
 - `LOCAL_API_BASE_URL`
 - `BACKOFFICE_DEV_URL`
+- `MOBILE_API_BASE_URL`
 
 ### Defaults efectivos
 
+- `ENV_NAME=local`
 - `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
+- `BACKEND_PROVIDER=local-docker`
+- `DATABASE_PROVIDER=local-docker`
+- `BACKOFFICE_PROVIDER=local-vite`
+- `MOBILE_RUNTIME_MODE=manual`
 - `LOCAL_API_BASE_URL=http://localhost:8080`
 - `BACKOFFICE_DEV_URL=http://localhost:5173`
+- `MOBILE_API_BASE_URL=http://localhost:8080`
 
 ### En backend
 
@@ -107,5 +121,6 @@ El backoffice se ejecuta fuera de Docker:
 - compose integrador propio en `platform`
 - cloud y deploy remoto
 - observabilidad real cross-repo
+- contratos ejecutables de staging o production
 - automatizacion de `mobile`
 - smoke tests de negocio end-to-end

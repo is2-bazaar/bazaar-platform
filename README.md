@@ -18,7 +18,10 @@ No orquesta `mobile`, no resuelve cloud y no contiene logica de negocio.
 .
 ├── defaults.env
 ├── .env.local.example
+├── .env.staging.example
+├── .env.production.example
 ├── docs/
+│   ├── environments.md
 │   └── local-runtime.md
 └── scripts/
     ├── common.sh
@@ -42,13 +45,21 @@ npm install
 
 Si necesitás overrides locales de paths o URLs, copiá `.env.local.example` como `.env.local` y ajustalo. En el caso feliz, los defaults asumen que todos los repos viven como hermanos.
 
+`.env.staging.example` y `.env.production.example` son contratos documentales de ambientes futuros. No los usa ningun script local.
+
 Defaults operativos:
 
+- `ENV_NAME=local`
 - `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
+- `BACKEND_PROVIDER=local-docker`
+- `DATABASE_PROVIDER=local-docker`
+- `BACKOFFICE_PROVIDER=local-vite`
+- `MOBILE_RUNTIME_MODE=manual`
 - `LOCAL_API_BASE_URL=http://localhost:8080`
 - `BACKOFFICE_DEV_URL=http://localhost:5173`
+- `MOBILE_API_BASE_URL=http://localhost:8080`
 
 1. Validar prerequisitos:
 
@@ -87,3 +98,5 @@ Defaults operativos:
 - `bazaar-mobile` queda fuera de la automatizacion, pero se documenta como parte del workspace.
 
 Los detalles del contrato y las decisiones postergadas estan en [docs/local-runtime.md](./docs/local-runtime.md).
+
+La vista de ambientes, providers y consumo de API por cliente esta en [docs/environments.md](./docs/environments.md).
