@@ -6,11 +6,11 @@
 
 ## Matriz de ambientes
 
-| Ambiente | Backend | Base de datos | Backoffice | Mobile | Orquestado por `platform` | API consumida |
+| Ambiente | Backend | Base de datos | Backoffice | Mobile | Orquestado por `platform` | API consumida (Backoffice / Mobile) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Local | Stack local del backend | Local, dentro del stack backend | Dev server local con Vite | Manual, fuera de automatizacion | Si, solo backend y launcher del backoffice | `LOCAL_API_BASE_URL` |
-| Staging | Render | Neon | Vercel | Manual, flujo separado | No | `BACKEND_BASE_URL` de staging |
-| Production | Render | Neon | Vercel | Manual, release separado | No | `BACKEND_BASE_URL` de production |
+| Local | Stack local del backend | Local, dentro del stack backend | Dev server local con Vite | Manual, fuera de automatizacion | Si, solo backend y launcher del backoffice | `LOCAL_API_BASE_URL` / `MOBILE_API_BASE_URL` |
+| Staging | Render | Neon | Vercel | Manual, flujo separado | No | `BACKEND_BASE_URL` / URL publica del backend staging |
+| Production | Render | Neon | Vercel | Manual, release separado | No | `BACKEND_BASE_URL` / URL publica del backend production |
 
 ## Consumo de API por cliente
 

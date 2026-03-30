@@ -30,7 +30,7 @@ if [[ "$ENV_NAME" != "local" ]]; then
   platform_fail "ENV_NAME debe ser local para el runtime ejecutable de bazaar-platform"
 fi
 
-platform_ok "contrato local de ambiente detectado para $ENV_NAME"
+platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 
 [[ -d "$BAZAAR_BACKEND_PATH" ]] || platform_fail "no se encontro bazaar-backend en $BAZAAR_BACKEND_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
