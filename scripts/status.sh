@@ -12,6 +12,7 @@ platform_info "backoffice path: $BAZAAR_BACKOFFICE_PATH"
 platform_info "mobile path: $BAZAAR_MOBILE_PATH"
 platform_info "api base url efectiva: $LOCAL_API_BASE_URL"
 platform_info "backoffice dev url efectiva: $BACKOFFICE_DEV_URL"
+platform_info "backend stack solicitado: ${BACKEND_STACK:-full}"
 
 if [[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh" ]]; then
   bash "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh"

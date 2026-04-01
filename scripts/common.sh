@@ -50,6 +50,18 @@ resolve_from_root() {
 load_platform_env() {
   PLATFORM_ROOT="$(platform_root)"
   local defaults_file
+  local existing_env_name="${ENV_NAME:-}"
+  local existing_backend_path="${BAZAAR_BACKEND_PATH:-}"
+  local existing_backoffice_path="${BAZAAR_BACKOFFICE_PATH:-}"
+  local existing_mobile_path="${BAZAAR_MOBILE_PATH:-}"
+  local existing_backend_provider="${BACKEND_PROVIDER:-}"
+  local existing_database_provider="${DATABASE_PROVIDER:-}"
+  local existing_backoffice_provider="${BACKOFFICE_PROVIDER:-}"
+  local existing_mobile_runtime_mode="${MOBILE_RUNTIME_MODE:-}"
+  local existing_local_api_base_url="${LOCAL_API_BASE_URL:-}"
+  local existing_backoffice_dev_url="${BACKOFFICE_DEV_URL:-}"
+  local existing_mobile_api_base_url="${MOBILE_API_BASE_URL:-}"
+  local existing_backend_stack="${BACKEND_STACK:-}"
 
   defaults_file="$PLATFORM_ROOT/defaults.env"
   [[ -f "$defaults_file" ]] || platform_fail "falta defaults.env en $PLATFORM_ROOT"
@@ -61,6 +73,19 @@ load_platform_env() {
     # shellcheck disable=SC1091
     source "$PLATFORM_ROOT/.env.local"
   fi
+
+  [[ -n "$existing_env_name" ]] && ENV_NAME="$existing_env_name"
+  [[ -n "$existing_backend_path" ]] && BAZAAR_BACKEND_PATH="$existing_backend_path"
+  [[ -n "$existing_backoffice_path" ]] && BAZAAR_BACKOFFICE_PATH="$existing_backoffice_path"
+  [[ -n "$existing_mobile_path" ]] && BAZAAR_MOBILE_PATH="$existing_mobile_path"
+  [[ -n "$existing_backend_provider" ]] && BACKEND_PROVIDER="$existing_backend_provider"
+  [[ -n "$existing_database_provider" ]] && DATABASE_PROVIDER="$existing_database_provider"
+  [[ -n "$existing_backoffice_provider" ]] && BACKOFFICE_PROVIDER="$existing_backoffice_provider"
+  [[ -n "$existing_mobile_runtime_mode" ]] && MOBILE_RUNTIME_MODE="$existing_mobile_runtime_mode"
+  [[ -n "$existing_local_api_base_url" ]] && LOCAL_API_BASE_URL="$existing_local_api_base_url"
+  [[ -n "$existing_backoffice_dev_url" ]] && BACKOFFICE_DEV_URL="$existing_backoffice_dev_url"
+  [[ -n "$existing_mobile_api_base_url" ]] && MOBILE_API_BASE_URL="$existing_mobile_api_base_url"
+  [[ -n "$existing_backend_stack" ]] && BACKEND_STACK="$existing_backend_stack"
 
   BAZAAR_BACKEND_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_BACKEND_PATH}")"
   BAZAAR_BACKOFFICE_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_BACKOFFICE_PATH}")"

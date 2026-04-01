@@ -10,6 +10,7 @@ load_platform_env
 "$SCRIPT_DIR/check.sh"
 
 platform_info "levantando backend local desde $BAZAAR_BACKEND_PATH"
+platform_info "backend stack solicitado: ${BACKEND_STACK:-full}"
 bash "$BAZAAR_BACKEND_PATH/scripts/dev/up.sh"
 
 platform_info "esperando readiness del gateway en $LOCAL_API_BASE_URL/readyz"
