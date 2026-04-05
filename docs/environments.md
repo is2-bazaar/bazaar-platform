@@ -8,7 +8,7 @@
 
 | Ambiente | Backend | Base de datos | Backoffice | Mobile | Orquestado por `platform` | API consumida (Backoffice / Mobile) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Local | Stack local del backend | Local, dentro del stack backend | Dev server local con Vite | Manual, fuera de automatizacion | Si, solo backend y launcher del backoffice | `LOCAL_API_BASE_URL` / `MOBILE_API_BASE_URL` |
+| Local | Stack local del backend | Local, dentro del stack backend | Dev server local con Vite | Runtime local con Expo | Si, via entrypoints `scripts/dev/*` de cada repo | `LOCAL_API_BASE_URL` / `MOBILE_API_BASE_URL` |
 | Staging | Render | Neon | Vercel | Manual, flujo separado | No | `BACKEND_BASE_URL` / URL publica del backend staging |
 | Production | Render | Neon | Vercel | Manual, release separado | No | `BACKEND_BASE_URL` / URL publica del backend production |
 
@@ -31,7 +31,7 @@
 - Backend: `local-docker` en local, `render` en staging y production.
 - Base de datos: `local-docker` en local, `neon` en staging y production.
 - Backoffice: `local-vite` en local, `vercel` en staging y production.
-- Mobile: manual en todos los ambientes desde la perspectiva de `platform`.
+- Mobile: `local-expo` en local; manual en staging y production desde la perspectiva de `platform`.
 
 ## Variables que si pertenecen a `platform`
 
@@ -46,6 +46,7 @@
 - `LOCAL_API_BASE_URL`
 - `BACKOFFICE_DEV_URL`
 - `MOBILE_API_BASE_URL`
+- `MOBILE_DEV_URL`
 - `BACKEND_BASE_URL` en contratos documentales
 - `BACKOFFICE_BASE_URL` en contratos documentales
 
@@ -65,4 +66,3 @@
 - sincronizacion de variables hacia providers
 - CI/CD entre ambientes
 - promocion de staging a production
-- automatizacion de `mobile`

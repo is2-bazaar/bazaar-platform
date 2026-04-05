@@ -50,6 +50,20 @@ resolve_from_root() {
 load_platform_env() {
   PLATFORM_ROOT="$(platform_root)"
   local defaults_file
+  local existing_env_name="${ENV_NAME:-}"
+  local existing_backend_path="${BAZAAR_BACKEND_PATH:-}"
+  local existing_backoffice_path="${BAZAAR_BACKOFFICE_PATH:-}"
+  local existing_mobile_path="${BAZAAR_MOBILE_PATH:-}"
+  local existing_backend_provider="${BACKEND_PROVIDER:-}"
+  local existing_database_provider="${DATABASE_PROVIDER:-}"
+  local existing_backoffice_provider="${BACKOFFICE_PROVIDER:-}"
+  local existing_mobile_runtime_mode="${MOBILE_RUNTIME_MODE:-}"
+  local existing_local_api_base_url="${LOCAL_API_BASE_URL:-}"
+  local existing_backoffice_dev_url="${BACKOFFICE_DEV_URL:-}"
+  local existing_mobile_api_base_url="${MOBILE_API_BASE_URL:-}"
+  local existing_mobile_dev_url="${MOBILE_DEV_URL:-}"
+  local existing_platform_lan_ip="${PLATFORM_LAN_IP:-}"
+  local existing_backend_stack="${BACKEND_STACK:-}"
 
   defaults_file="$PLATFORM_ROOT/defaults.env"
   [[ -f "$defaults_file" ]] || platform_fail "falta defaults.env en $PLATFORM_ROOT"
@@ -62,18 +76,38 @@ load_platform_env() {
     source "$PLATFORM_ROOT/.env.local"
   fi
 
+  [[ -n "$existing_env_name" ]] && ENV_NAME="$existing_env_name"
+  [[ -n "$existing_backend_path" ]] && BAZAAR_BACKEND_PATH="$existing_backend_path"
+  [[ -n "$existing_backoffice_path" ]] && BAZAAR_BACKOFFICE_PATH="$existing_backoffice_path"
+  [[ -n "$existing_mobile_path" ]] && BAZAAR_MOBILE_PATH="$existing_mobile_path"
+  [[ -n "$existing_backend_provider" ]] && BACKEND_PROVIDER="$existing_backend_provider"
+  [[ -n "$existing_database_provider" ]] && DATABASE_PROVIDER="$existing_database_provider"
+  [[ -n "$existing_backoffice_provider" ]] && BACKOFFICE_PROVIDER="$existing_backoffice_provider"
+  [[ -n "$existing_mobile_runtime_mode" ]] && MOBILE_RUNTIME_MODE="$existing_mobile_runtime_mode"
+  [[ -n "$existing_local_api_base_url" ]] && LOCAL_API_BASE_URL="$existing_local_api_base_url"
+  [[ -n "$existing_backoffice_dev_url" ]] && BACKOFFICE_DEV_URL="$existing_backoffice_dev_url"
+  [[ -n "$existing_mobile_api_base_url" ]] && MOBILE_API_BASE_URL="$existing_mobile_api_base_url"
+  [[ -n "$existing_mobile_dev_url" ]] && MOBILE_DEV_URL="$existing_mobile_dev_url"
+  [[ -n "$existing_platform_lan_ip" ]] && PLATFORM_LAN_IP="$existing_platform_lan_ip"
+  [[ -n "$existing_backend_stack" ]] && BACKEND_STACK="$existing_backend_stack"
+
   BAZAAR_BACKEND_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_BACKEND_PATH}")"
   BAZAAR_BACKOFFICE_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_BACKOFFICE_PATH}")"
   BAZAAR_MOBILE_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_MOBILE_PATH}")"
   LOCAL_API_BASE_URL="${LOCAL_API_BASE_URL%/}"
   BACKOFFICE_DEV_URL="${BACKOFFICE_DEV_URL%/}"
   MOBILE_API_BASE_URL="${MOBILE_API_BASE_URL%/}"
+  MOBILE_DEV_URL="${MOBILE_DEV_URL%/}"
 
   require_env BAZAAR_BACKEND_PATH
   require_env BAZAAR_BACKOFFICE_PATH
   require_env BAZAAR_MOBILE_PATH
   require_env LOCAL_API_BASE_URL
   require_env BACKOFFICE_DEV_URL
+  require_env MOBILE_API_BASE_URL
+  require_env MOBILE_DEV_URL
+
+  PLATFORM_LAN_IP="${PLATFORM_LAN_IP:-$(platform_detect_lan_ip)}"
 }
 
 require_command() {
@@ -92,30 +126,165 @@ require_env() {
   fi
 }
 
-http_probe() {
-  local url="$1"
+platform_require_repo_script() {
+  local repo_label="$1"
+  local repo_root="$2"
+  local script_name="$3"
+  local script_path="$repo_root/scripts/dev/$script_name"
 
-  curl --connect-timeout 2 --max-time 5 -fsS "$url" >/dev/null 2>&1
+  [[ -n "$repo_root" ]] || platform_fail "$repo_label no esta configurado"
+  [[ -d "$repo_root" ]] || platform_fail "no se encontro $repo_label en $repo_root"
+  [[ -f "$script_path" ]] || platform_fail "no se encontro el entrypoint de $repo_label: $script_path"
 }
 
-wait_for_ready() {
+platform_detect_lan_ip() {
+  local lan_ip=""
+
+  if command -v ip >/dev/null 2>&1; then
+    lan_ip="$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
+  fi
+
+  if [[ -z "$lan_ip" ]] && command -v hostname >/dev/null 2>&1; then
+    lan_ip="$(hostname -I 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i !~ /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./) {print $i; exit}}')"
+  fi
+
+  printf '%s\n' "$lan_ip"
+}
+
+platform_url_scheme() {
   local url="$1"
-  local timeout_seconds="${2:-60}"
-  local deadline
 
-  deadline=$((SECONDS + timeout_seconds))
+  if [[ "$url" == *"://"* ]]; then
+    printf '%s\n' "${url%%://*}"
+    return 0
+  fi
 
-  while (( SECONDS < deadline )); do
-    if http_probe "$url"; then
+  printf 'http\n'
+}
+
+platform_url_origin() {
+  local url="$1"
+  local origin="${url#*://}"
+
+  printf '%s\n' "${origin%%/*}"
+}
+
+platform_url_path() {
+  local url="$1"
+  local origin="${url#*://}"
+
+  if [[ "$origin" == */* ]]; then
+    printf '/%s\n' "${origin#*/}"
+    return 0
+  fi
+
+  printf '\n'
+}
+
+platform_url_host() {
+  local origin
+  origin="$(platform_url_origin "$1")"
+
+  if [[ "$origin" == *:* ]]; then
+    printf '%s\n' "${origin%%:*}"
+    return 0
+  fi
+
+  printf '%s\n' "$origin"
+}
+
+platform_url_port() {
+  local origin
+  origin="$(platform_url_origin "$1")"
+
+  if [[ "$origin" == *:* ]]; then
+    printf '%s\n' "${origin##*:}"
+    return 0
+  fi
+
+  printf '\n'
+}
+
+platform_host_is_loopback() {
+  case "$1" in
+    localhost|127.0.0.1|0.0.0.0|::1)
       return 0
-    fi
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
-    if (( SECONDS >= deadline )); then
-      break
-    fi
+platform_mobile_effective_api_base_url() {
+  local api_base_url="$MOBILE_API_BASE_URL"
+  local api_host
+  local api_port
+  local api_scheme
+  local api_path
 
-    sleep 2
-  done
+  if [[ -z "${PLATFORM_LAN_IP:-}" ]]; then
+    printf '%s\n' "$api_base_url"
+    return 0
+  fi
 
-  return 1
+  api_host="$(platform_url_host "$api_base_url")"
+  if ! platform_host_is_loopback "$api_host"; then
+    printf '%s\n' "$api_base_url"
+    return 0
+  fi
+
+  api_scheme="$(platform_url_scheme "$api_base_url")"
+  api_port="$(platform_url_port "$api_base_url")"
+  api_path="$(platform_url_path "$api_base_url")"
+
+  if [[ -n "$api_port" ]]; then
+    printf '%s://%s:%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_port" "$api_path"
+    return 0
+  fi
+
+  printf '%s://%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_path"
+}
+
+platform_mobile_device_api_url() {
+  platform_mobile_effective_api_base_url
+}
+
+platform_mobile_device_url() {
+  if [[ -z "${PLATFORM_LAN_IP:-}" ]]; then
+    return 1
+  fi
+
+  local mobile_origin="${MOBILE_DEV_URL#*://}"
+  local mobile_scheme="http"
+
+  if [[ "$MOBILE_DEV_URL" == *"://"* ]]; then
+    mobile_scheme="${MOBILE_DEV_URL%%://*}"
+  fi
+
+  printf '%s://%s:%s\n' "$mobile_scheme" "$PLATFORM_LAN_IP" "${mobile_origin##*:}"
+}
+
+platform_run_backend_script() {
+  local script_name="$1"
+
+  BACKEND_LOCAL_API_BASE_URL="$LOCAL_API_BASE_URL" \
+    BACKEND_STACK="${BACKEND_STACK:-full}" \
+    bash "$BAZAAR_BACKEND_PATH/scripts/dev/$script_name"
+}
+
+platform_run_backoffice_script() {
+  local script_name="$1"
+
+  BACKOFFICE_API_BASE_URL="$LOCAL_API_BASE_URL" \
+    BACKOFFICE_DEV_URL="$BACKOFFICE_DEV_URL" \
+    bash "$BAZAAR_BACKOFFICE_PATH/scripts/dev/$script_name"
+}
+
+platform_run_mobile_script() {
+  local script_name="$1"
+
+  MOBILE_API_BASE_URL="$(platform_mobile_effective_api_base_url)" \
+    MOBILE_DEV_URL="$MOBILE_DEV_URL" \
+    bash "$BAZAAR_MOBILE_PATH/scripts/dev/$script_name"
 }

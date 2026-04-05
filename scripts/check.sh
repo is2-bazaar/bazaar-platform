@@ -25,6 +25,7 @@ require_env DATABASE_PROVIDER
 require_env BACKOFFICE_PROVIDER
 require_env MOBILE_RUNTIME_MODE
 require_env MOBILE_API_BASE_URL
+require_env MOBILE_DEV_URL
 
 if [[ "$ENV_NAME" != "local" ]]; then
   platform_fail "ENV_NAME debe ser local para el runtime ejecutable de bazaar-platform"
@@ -34,17 +35,17 @@ platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 
 [[ -d "$BAZAAR_BACKEND_PATH" ]] || platform_fail "no se encontro bazaar-backend en $BAZAAR_BACKEND_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
-
-if [[ ! -d "$BAZAAR_MOBILE_PATH" ]]; then
-  platform_warn "bazaar-mobile no fue encontrado en $BAZAAR_MOBILE_PATH"
-else
-  platform_ok "bazaar-mobile encontrado en $BAZAAR_MOBILE_PATH"
-fi
+[[ -d "$BAZAAR_MOBILE_PATH" ]] || platform_fail "no se encontro bazaar-mobile en $BAZAAR_MOBILE_PATH"
 
 [[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_BACKEND_PATH/scripts/dev/up.sh"
 [[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_BACKEND_PATH/scripts/dev/down.sh"
 [[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_BACKEND_PATH/scripts/dev/status.sh"
-[[ -f "$BAZAAR_BACKOFFICE_PATH/package.json" ]] || platform_fail "falta package.json en bazaar-backoffice"
+[[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/up.sh"
+[[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/down.sh"
+[[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/status.sh"
+[[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/up.sh"
+[[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/down.sh"
+[[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/status.sh"
 
 platform_ok "repos y entrypoints locales detectados"
 
@@ -52,14 +53,8 @@ if [[ ! -d "$BAZAAR_BACKOFFICE_PATH/node_modules" ]]; then
   platform_warn "backoffice no tiene dependencias instaladas; ejecutar npm install en $BAZAAR_BACKOFFICE_PATH"
 fi
 
-if [[ -f "$BAZAAR_BACKOFFICE_PATH/.env.local" ]]; then
-  if grep -Eq '^VITE_API_BASE_URL=' "$BAZAAR_BACKOFFICE_PATH/.env.local"; then
-    platform_ok "backoffice tiene VITE_API_BASE_URL configurado en .env.local"
-  else
-    platform_warn "existe .env.local en backoffice, pero no define VITE_API_BASE_URL"
-  fi
-else
-  platform_warn "backoffice no tiene .env.local; backoffice.sh inyectara VITE_API_BASE_URL en runtime"
+if [[ ! -d "$BAZAAR_MOBILE_PATH/node_modules" ]]; then
+  platform_warn "mobile no tiene dependencias instaladas; ejecutar npm install en $BAZAAR_MOBILE_PATH"
 fi
 
 platform_info "check completo"

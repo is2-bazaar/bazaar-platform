@@ -11,8 +11,8 @@ La vista general de ambientes y providers vive en [environments.md](./environmen
 En esta etapa, `platform` trata a `bazaar-backend` como una sola unidad operativa:
 
 - lo arranca mediante su entrypoint local de repo
-- espera a que el gateway quede `ready`
 - no necesita conocer nombres de microservicios
+- consume solo la interfaz `scripts/dev/*`
 
 Contrato operativo esperado:
 
@@ -33,17 +33,17 @@ Contrato operativo esperado:
 
 ### Outputs esperados
 
-- `up.sh`: deja el backend arriba y devuelve exit code 0
+- `up.sh`: deja el backend arriba, garantiza readiness del gateway y devuelve exit code 0
 - `down.sh`: apaga el backend y devuelve exit code 0
 - `status.sh`: imprime estado del compose y checks basicos del gateway
 
 ### Significado de `ready`
 
-Para `platform`, el backend esta `ready` cuando el gateway responde exitosamente en:
+Para `platform`, el contrato del backend considera al sistema `ready` cuando el gateway responde exitosamente en:
 
 - `GET $LOCAL_API_BASE_URL/readyz`
 
-`platform` no inspecciona microservicios individuales ni nombres internos del backend.
+`platform` no implementa ese readiness por su cuenta: delega el arranque a `scripts/dev/up.sh` y asume que el repo backend solo devuelve exit code 0 una vez que esa condicion ya esta cumplida. Tampoco inspecciona microservicios individuales ni nombres internos del backend.
 
 ### Que puede cambiar sin romper a `platform`
 
@@ -61,18 +61,21 @@ Para `platform`, el backend esta `ready` cuando el gateway responde exitosamente
 
 El backoffice se ejecuta fuera de Docker:
 
-- `npm run dev`
-- `VITE_API_BASE_URL` apuntando al gateway local
+- mediante `scripts/dev/up.sh`
+- `BACKOFFICE_API_BASE_URL` apuntando al gateway local
+- `status.sh` y `down.sh` encapsulando PID, logs y readiness
 
-`platform` puede validar o inyectar defaults de entorno, pero no se vuelve dueño de la configuracion del frontend.
+`platform` no conoce Vite ni `npm run dev`; solo invoca el contrato del repo.
 
 ## Unidad local: mobile
 
-`mobile` queda fuera de la automatizacion de `platform`:
+`mobile` tambien queda tratado como caja negra:
 
-- no se levanta desde `platform`
-- se documenta su path local
+- se levanta mediante `scripts/dev/up.sh`
+- recibe `MOBILE_API_BASE_URL`
+- expone `status.sh` y `down.sh`
 - consume la misma API local, con las consideraciones normales de Expo y dispositivo fisico
+- `platform` puede informar la IP LAN detectada y las URLs a usar desde un dispositivo fisico
 
 ## Variables del contrato local
 
@@ -89,6 +92,8 @@ El backoffice se ejecuta fuera de Docker:
 - `LOCAL_API_BASE_URL`
 - `BACKOFFICE_DEV_URL`
 - `MOBILE_API_BASE_URL`
+- `MOBILE_DEV_URL`
+- `PLATFORM_LAN_IP` opcional para override manual de la IP LAN mostrada al usuario
 
 ### Defaults efectivos
 
@@ -99,10 +104,11 @@ El backoffice se ejecuta fuera de Docker:
 - `BACKEND_PROVIDER=local-docker`
 - `DATABASE_PROVIDER=local-docker`
 - `BACKOFFICE_PROVIDER=local-vite`
-- `MOBILE_RUNTIME_MODE=manual`
+- `MOBILE_RUNTIME_MODE=local-expo`
 - `LOCAL_API_BASE_URL=http://localhost:8080`
 - `BACKOFFICE_DEV_URL=http://localhost:5173`
 - `MOBILE_API_BASE_URL=http://localhost:8080`
+- `MOBILE_DEV_URL=http://localhost:8081`
 
 ### En backend
 
@@ -113,8 +119,15 @@ El backoffice se ejecuta fuera de Docker:
 
 ### En backoffice
 
-- `VITE_API_BASE_URL`
-- futuras `VITE_*` propias del frontend
+- `BACKOFFICE_API_BASE_URL`
+- `BACKOFFICE_DEV_URL`
+- futuras variables propias del frontend
+
+### En mobile
+
+- `MOBILE_API_BASE_URL`
+- `MOBILE_DEV_URL`
+- futuras variables propias del runtime Expo
 
 ## Decisiones explicitamente postergadas
 
@@ -122,5 +135,4 @@ El backoffice se ejecuta fuera de Docker:
 - cloud y deploy remoto
 - observabilidad real cross-repo
 - contratos ejecutables de staging o production
-- automatizacion de `mobile`
 - smoke tests de negocio end-to-end
