@@ -7,9 +7,13 @@ source "$SCRIPT_DIR/common.sh"
 
 load_platform_env
 
-[[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/down.sh" ]] || platform_fail "falta scripts/dev/down.sh en bazaar-backend"
+platform_info "apagando mobile local"
+platform_run_mobile_script down.sh
+
+platform_info "apagando backoffice local"
+platform_run_backoffice_script down.sh
 
 platform_info "apagando backend local"
-bash "$BAZAAR_BACKEND_PATH/scripts/dev/down.sh"
-platform_ok "backend local apagado"
-platform_info "si el backoffice sigue corriendo en foreground, cortalo con Ctrl+C"
+platform_run_backend_script down.sh
+
+platform_ok "stack local apagado"

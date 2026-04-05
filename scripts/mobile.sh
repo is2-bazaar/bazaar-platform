@@ -7,5 +7,5 @@ source "$SCRIPT_DIR/common.sh"
 
 load_platform_env
 
-platform_info "delegando arranque de backoffice a su contrato local"
-platform_run_backoffice_script up.sh
+platform_info "delegando arranque de mobile a su contrato local"
+platform_run_mobile_script up.sh
