@@ -104,6 +104,7 @@ load_platform_env() {
   require_env BAZAAR_MOBILE_PATH
   require_env LOCAL_API_BASE_URL
   require_env BACKOFFICE_DEV_URL
+  require_env MOBILE_API_BASE_URL
   require_env MOBILE_DEV_URL
 
   PLATFORM_LAN_IP="${PLATFORM_LAN_IP:-$(platform_detect_lan_ip)}"
@@ -123,6 +124,17 @@ require_env() {
   if [[ -z "${!variable_name:-}" ]]; then
     platform_fail "falta la variable requerida: $variable_name"
   fi
+}
+
+platform_require_repo_script() {
+  local repo_label="$1"
+  local repo_root="$2"
+  local script_name="$3"
+  local script_path="$repo_root/scripts/dev/$script_name"
+
+  [[ -n "$repo_root" ]] || platform_fail "$repo_label no esta configurado"
+  [[ -d "$repo_root" ]] || platform_fail "no se encontro $repo_label en $repo_root"
+  [[ -f "$script_path" ]] || platform_fail "no se encontro el entrypoint de $repo_label: $script_path"
 }
 
 platform_detect_lan_ip() {

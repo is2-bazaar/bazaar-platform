@@ -33,17 +33,17 @@ Contrato operativo esperado:
 
 ### Outputs esperados
 
-- `up.sh`: deja el backend arriba y devuelve exit code 0
+- `up.sh`: deja el backend arriba, garantiza readiness del gateway y devuelve exit code 0
 - `down.sh`: apaga el backend y devuelve exit code 0
 - `status.sh`: imprime estado del compose y checks basicos del gateway
 
 ### Significado de `ready`
 
-Para `platform`, el backend esta `ready` cuando el gateway responde exitosamente en:
+Para `platform`, el contrato del backend considera al sistema `ready` cuando el gateway responde exitosamente en:
 
 - `GET $LOCAL_API_BASE_URL/readyz`
 
-`platform` no inspecciona microservicios individuales ni nombres internos del backend.
+`platform` no implementa ese readiness por su cuenta: delega el arranque a `scripts/dev/up.sh` y asume que el repo backend solo devuelve exit code 0 una vez que esa condicion ya esta cumplida. Tampoco inspecciona microservicios individuales ni nombres internos del backend.
 
 ### Que puede cambiar sin romper a `platform`
 
