@@ -21,6 +21,7 @@ platform_run_mobile_script up.sh
 platform_ok "stack local listo"
 platform_info "api base url: $LOCAL_API_BASE_URL"
 platform_info "backoffice dev url: $BACKOFFICE_DEV_URL"
+platform_info "mobile api base url efectiva: $(platform_mobile_effective_api_base_url)"
 platform_info "mobile dev url: $MOBILE_DEV_URL"
 if [[ -n "${PLATFORM_LAN_IP:-}" ]]; then
   platform_info "ip local detectada para dispositivo: $PLATFORM_LAN_IP"

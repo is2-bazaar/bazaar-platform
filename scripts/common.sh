@@ -139,30 +139,103 @@ platform_detect_lan_ip() {
   printf '%s\n' "$lan_ip"
 }
 
-platform_mobile_device_api_url() {
-  if [[ -z "${PLATFORM_LAN_IP:-}" ]]; then
-    return 1
-  fi
+platform_url_scheme() {
+  local url="$1"
 
-  local api_origin="${MOBILE_API_BASE_URL#*://}"
-  local api_suffix=""
-  local api_scheme="http"
-
-  if [[ "$MOBILE_API_BASE_URL" == *"://"* ]]; then
-    api_scheme="${MOBILE_API_BASE_URL%%://*}"
-  fi
-
-  if [[ "$api_origin" == */* ]]; then
-    api_suffix="/${api_origin#*/}"
-    api_origin="${api_origin%%/*}"
-  fi
-
-  if [[ "$api_origin" == *:* ]]; then
-    printf '%s://%s:%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "${api_origin##*:}" "$api_suffix"
+  if [[ "$url" == *"://"* ]]; then
+    printf '%s\n' "${url%%://*}"
     return 0
   fi
 
-  printf '%s://%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_suffix"
+  printf 'http\n'
+}
+
+platform_url_origin() {
+  local url="$1"
+  local origin="${url#*://}"
+
+  printf '%s\n' "${origin%%/*}"
+}
+
+platform_url_path() {
+  local url="$1"
+  local origin="${url#*://}"
+
+  if [[ "$origin" == */* ]]; then
+    printf '/%s\n' "${origin#*/}"
+    return 0
+  fi
+
+  printf '\n'
+}
+
+platform_url_host() {
+  local origin
+  origin="$(platform_url_origin "$1")"
+
+  if [[ "$origin" == *:* ]]; then
+    printf '%s\n' "${origin%%:*}"
+    return 0
+  fi
+
+  printf '%s\n' "$origin"
+}
+
+platform_url_port() {
+  local origin
+  origin="$(platform_url_origin "$1")"
+
+  if [[ "$origin" == *:* ]]; then
+    printf '%s\n' "${origin##*:}"
+    return 0
+  fi
+
+  printf '\n'
+}
+
+platform_host_is_loopback() {
+  case "$1" in
+    localhost|127.0.0.1|0.0.0.0|::1)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+platform_mobile_effective_api_base_url() {
+  local api_base_url="$MOBILE_API_BASE_URL"
+  local api_host
+  local api_port
+  local api_scheme
+  local api_path
+
+  if [[ -z "${PLATFORM_LAN_IP:-}" ]]; then
+    printf '%s\n' "$api_base_url"
+    return 0
+  fi
+
+  api_host="$(platform_url_host "$api_base_url")"
+  if ! platform_host_is_loopback "$api_host"; then
+    printf '%s\n' "$api_base_url"
+    return 0
+  fi
+
+  api_scheme="$(platform_url_scheme "$api_base_url")"
+  api_port="$(platform_url_port "$api_base_url")"
+  api_path="$(platform_url_path "$api_base_url")"
+
+  if [[ -n "$api_port" ]]; then
+    printf '%s://%s:%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_port" "$api_path"
+    return 0
+  fi
+
+  printf '%s://%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_path"
+}
+
+platform_mobile_device_api_url() {
+  platform_mobile_effective_api_base_url
 }
 
 platform_mobile_device_url() {
@@ -199,7 +272,7 @@ platform_run_backoffice_script() {
 platform_run_mobile_script() {
   local script_name="$1"
 
-  MOBILE_API_BASE_URL="$MOBILE_API_BASE_URL" \
+  MOBILE_API_BASE_URL="$(platform_mobile_effective_api_base_url)" \
     MOBILE_DEV_URL="$MOBILE_DEV_URL" \
     bash "$BAZAAR_MOBILE_PATH/scripts/dev/$script_name"
 }

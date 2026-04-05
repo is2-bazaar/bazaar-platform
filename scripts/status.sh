@@ -12,6 +12,7 @@ platform_info "backoffice path: $BAZAAR_BACKOFFICE_PATH"
 platform_info "mobile path: $BAZAAR_MOBILE_PATH"
 platform_info "api base url efectiva: $LOCAL_API_BASE_URL"
 platform_info "backoffice dev url efectiva: $BACKOFFICE_DEV_URL"
+platform_info "mobile api base url efectiva: $(platform_mobile_effective_api_base_url)"
 platform_info "mobile dev url efectiva: $MOBILE_DEV_URL"
 if [[ -n "${PLATFORM_LAN_IP:-}" ]]; then
   platform_info "ip local detectada para dispositivo: $PLATFORM_LAN_IP"
