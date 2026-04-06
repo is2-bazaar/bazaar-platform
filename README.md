@@ -50,6 +50,8 @@ npm install
 
 Si necesitás overrides locales de paths o URLs, copiá `.env.local.example` como `.env.local` y ajustalo. En el caso feliz, los defaults asumen que todos los repos viven como hermanos.
 
+`bazaar-platform` tambien deriva `GATEWAY_ALLOWED_ORIGINS` para el backend a partir de `BACKOFFICE_DEV_URL`, `MOBILE_DEV_URL` y `PLATFORM_LAN_IP`. El backend no mantiene una allowlist local hardcodeada.
+
 Cuando `platform` detecta una IP LAN valida, `up.sh` y `status.sh` imprimen tambien la URL de API y del bundler que tenes que usar desde un dispositivo fisico.
 
 `.env.staging.example` y `.env.production.example` son contratos documentales de ambientes futuros. No los usa ningun script local.
@@ -107,6 +109,7 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` solo invoca esos entrypoints; no conoce detalles internos de `npm`, `vite` ni `expo`.
+- `platform` es la unica fuente de verdad para la allowlist CORS local del gateway.
 
 Los detalles del contrato y las decisiones postergadas estan en [docs/local-runtime.md](./docs/local-runtime.md).
 

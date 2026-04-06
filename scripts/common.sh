@@ -207,13 +207,83 @@ platform_url_port() {
 
 platform_host_is_loopback() {
   case "$1" in
-    localhost|127.0.0.1|0.0.0.0|::1)
+    localhost|127.0.0.1|0.0.0.0|::1|"[::1]"|::|"[::]")
       return 0
       ;;
     *)
       return 1
       ;;
   esac
+}
+
+platform_url_origin_value() {
+  local url="$1"
+
+  printf '%s://%s\n' "$(platform_url_scheme "$url")" "$(platform_url_origin "$url")"
+}
+
+platform_origin_with_host() {
+  local url="$1"
+  local host="$2"
+  local port
+
+  port="$(platform_url_port "$url")"
+  if [[ -n "$port" ]]; then
+    printf '%s://%s:%s\n' "$(platform_url_scheme "$url")" "$host" "$port"
+    return 0
+  fi
+
+  printf '%s://%s\n' "$(platform_url_scheme "$url")" "$host"
+}
+
+platform_append_csv_unique() {
+  local csv="$1"
+  local value="$2"
+
+  if [[ -z "$value" ]]; then
+    printf '%s\n' "$csv"
+    return 0
+  fi
+
+  case ",$csv," in
+    *",$value,"*)
+      printf '%s\n' "$csv"
+      return 0
+      ;;
+  esac
+
+  if [[ -z "$csv" ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+
+  printf '%s,%s\n' "$csv" "$value"
+}
+
+platform_append_allowed_origin_for_url() {
+  local csv="$1"
+  local url="$2"
+  local origin
+  local host
+
+  origin="$(platform_url_origin_value "$url")"
+  csv="$(platform_append_csv_unique "$csv" "$origin")"
+
+  host="$(platform_url_host "$url")"
+  if [[ -n "${PLATFORM_LAN_IP:-}" ]] && platform_host_is_loopback "$host"; then
+    csv="$(platform_append_csv_unique "$csv" "$(platform_origin_with_host "$url" "$PLATFORM_LAN_IP")")"
+  fi
+
+  printf '%s\n' "$csv"
+}
+
+platform_backend_allowed_origins() {
+  local origins=""
+
+  origins="$(platform_append_allowed_origin_for_url "$origins" "$BACKOFFICE_DEV_URL")"
+  origins="$(platform_append_allowed_origin_for_url "$origins" "$MOBILE_DEV_URL")"
+
+  printf '%s\n' "$origins"
 }
 
 platform_mobile_effective_api_base_url() {
@@ -270,6 +340,7 @@ platform_run_backend_script() {
 
   BACKEND_LOCAL_API_BASE_URL="$LOCAL_API_BASE_URL" \
     BACKEND_STACK="${BACKEND_STACK:-full}" \
+    GATEWAY_ALLOWED_ORIGINS="$(platform_backend_allowed_origins)" \
     bash "$BAZAAR_BACKEND_PATH/scripts/dev/$script_name"
 }
 
