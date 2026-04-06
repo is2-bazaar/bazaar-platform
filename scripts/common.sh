@@ -185,6 +185,11 @@ platform_url_host() {
   local origin
   origin="$(platform_url_origin "$1")"
 
+  if [[ "$origin" =~ ^\[([^]]+)\](:[0-9]+)?$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
   if [[ "$origin" == *:* ]]; then
     printf '%s\n' "${origin%%:*}"
     return 0
@@ -197,6 +202,16 @@ platform_url_port() {
   local origin
   origin="$(platform_url_origin "$1")"
 
+  if [[ "$origin" =~ ^\[[^]]+\]:([0-9]+)$ ]]; then
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  if [[ "$origin" =~ ^\[[^]]+\]$ ]]; then
+    printf '\n'
+    return 0
+  fi
+
   if [[ "$origin" == *:* ]]; then
     printf '%s\n' "${origin##*:}"
     return 0
@@ -207,13 +222,95 @@ platform_url_port() {
 
 platform_host_is_loopback() {
   case "$1" in
-    localhost|127.0.0.1|0.0.0.0|::1)
+    localhost|127.0.0.1|0.0.0.0|::1|"[::1]"|::|"[::]")
       return 0
       ;;
     *)
       return 1
       ;;
   esac
+}
+
+platform_url_origin_value() {
+  local url="$1"
+
+  printf '%s://%s\n' "$(platform_url_scheme "$url")" "$(platform_url_origin "$url")"
+}
+
+platform_format_url_host() {
+  local host="$1"
+
+  if [[ "$host" == *:* ]] && [[ "$host" != \[*\] ]]; then
+    printf '[%s]\n' "$host"
+    return 0
+  fi
+
+  printf '%s\n' "$host"
+}
+
+platform_origin_with_host() {
+  local url="$1"
+  local host="$2"
+  local port
+  local formatted_host
+
+  formatted_host="$(platform_format_url_host "$host")"
+
+  port="$(platform_url_port "$url")"
+  if [[ -n "$port" ]]; then
+    printf '%s://%s:%s\n' "$(platform_url_scheme "$url")" "$formatted_host" "$port"
+    return 0
+  fi
+
+  printf '%s://%s\n' "$(platform_url_scheme "$url")" "$formatted_host"
+}
+
+platform_append_csv_unique() {
+  local csv="$1"
+  local value="$2"
+
+  if [[ -z "$value" ]]; then
+    printf '%s\n' "$csv"
+    return 0
+  fi
+
+  if [[ -n "$csv" ]] && printf '%s\n' ",$csv," | grep -F -q -- ",$value,"; then
+    printf '%s\n' "$csv"
+    return 0
+  fi
+
+  if [[ -z "$csv" ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+
+  printf '%s,%s\n' "$csv" "$value"
+}
+
+platform_append_allowed_origin_for_url() {
+  local csv="$1"
+  local url="$2"
+  local origin
+  local host
+
+  origin="$(platform_url_origin_value "$url")"
+  csv="$(platform_append_csv_unique "$csv" "$origin")"
+
+  host="$(platform_url_host "$url")"
+  if [[ -n "${PLATFORM_LAN_IP:-}" ]] && platform_host_is_loopback "$host"; then
+    csv="$(platform_append_csv_unique "$csv" "$(platform_origin_with_host "$url" "$PLATFORM_LAN_IP")")"
+  fi
+
+  printf '%s\n' "$csv"
+}
+
+platform_backend_allowed_origins() {
+  local origins=""
+
+  origins="$(platform_append_allowed_origin_for_url "$origins" "$BACKOFFICE_DEV_URL")"
+  origins="$(platform_append_allowed_origin_for_url "$origins" "$MOBILE_DEV_URL")"
+
+  printf '%s\n' "$origins"
 }
 
 platform_mobile_effective_api_base_url() {
@@ -239,11 +336,11 @@ platform_mobile_effective_api_base_url() {
   api_path="$(platform_url_path "$api_base_url")"
 
   if [[ -n "$api_port" ]]; then
-    printf '%s://%s:%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_port" "$api_path"
+    printf '%s://%s:%s%s\n' "$api_scheme" "$(platform_format_url_host "$PLATFORM_LAN_IP")" "$api_port" "$api_path"
     return 0
   fi
 
-  printf '%s://%s%s\n' "$api_scheme" "$PLATFORM_LAN_IP" "$api_path"
+  printf '%s://%s%s\n' "$api_scheme" "$(platform_format_url_host "$PLATFORM_LAN_IP")" "$api_path"
 }
 
 platform_mobile_device_api_url() {
@@ -270,6 +367,7 @@ platform_run_backend_script() {
 
   BACKEND_LOCAL_API_BASE_URL="$LOCAL_API_BASE_URL" \
     BACKEND_STACK="${BACKEND_STACK:-full}" \
+    GATEWAY_ALLOWED_ORIGINS="$(platform_backend_allowed_origins)" \
     bash "$BAZAAR_BACKEND_PATH/scripts/dev/$script_name"
 }
 

@@ -19,6 +19,7 @@ Contrato operativo esperado:
 - repo disponible en disco
 - scripts de desarrollo estables
 - gateway accesible en `LOCAL_API_BASE_URL`
+- allowlist CORS del gateway calculada por `platform`
 
 ## Interfaz estable de backend para `platform`
 
@@ -30,6 +31,7 @@ Contrato operativo esperado:
   - `scripts/dev/down.sh`
   - `scripts/dev/status.sh`
 - gateway accesible en `LOCAL_API_BASE_URL`
+- `GATEWAY_ALLOWED_ORIGINS` provista por `platform` al invocar los entrypoints del backend
 
 ### Outputs esperados
 
@@ -45,6 +47,16 @@ Para `platform`, el contrato del backend considera al sistema `ready` cuando el 
 
 `platform` no implementa ese readiness por su cuenta: delega el arranque a `scripts/dev/up.sh` y asume que el repo backend solo devuelve exit code 0 una vez que esa condicion ya esta cumplida. Tampoco inspecciona microservicios individuales ni nombres internos del backend.
 
+### CORS local
+
+`platform` deriva `GATEWAY_ALLOWED_ORIGINS` desde:
+
+- `BACKOFFICE_DEV_URL`
+- `MOBILE_DEV_URL`
+- `PLATFORM_LAN_IP` cuando hace falta exponer origins equivalentes para dispositivo fisico o acceso por LAN
+
+El backend no debe hardcodear origins locales en codigo, compose ni scripts de desarrollo. Si se ejecuta standalone fuera de `platform`, cualquier necesidad de CORS queda bajo responsabilidad explicita del runtime que lo lanza.
+
 ### Que puede cambiar sin romper a `platform`
 
 - nombres de microservicios internos
@@ -56,6 +68,7 @@ Para `platform`, el contrato del backend considera al sistema `ready` cuando el 
 - ubicacion o existencia de `scripts/dev/up.sh`, `down.sh`, `status.sh`
 - existencia del gateway en `LOCAL_API_BASE_URL`
 - semantica operativa de `/readyz` como señal de backend listo
+- provision de `GATEWAY_ALLOWED_ORIGINS` durante el runtime integrado local
 
 ## Unidad local: backoffice
 
