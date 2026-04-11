@@ -59,11 +59,18 @@ services:
 
   catalog-service:
     build:
-      <<: *backend-build
-      dockerfile: services/catalog-service/Dockerfile
+      context: ${BAZAAR_CATALOG_SERVICE_PATH}/..
+      dockerfile: bazaar-backend-catalog-service/Dockerfile
     environment:
+      SERVICE_NAME: "catalog-service"
       PORT: "${CATALOG_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${CATALOG_SERVICE_DEPENDENCY_TARGETS:-catalog-db:5432}"
+      CATALOG_DB_HOST: "${CATALOG_DB_HOST:-catalog-db}"
+      CATALOG_DB_PORT: "${CATALOG_DB_PORT:-5432}"
+      CATALOG_DB_USER: "${CATALOG_DB_USER:-postgres}"
+      CATALOG_DB_PASSWORD: "${CATALOG_DB_PASSWORD:-postgres}"
+      CATALOG_DB_NAME: "${CATALOG_DB_NAME:-catalog}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     depends_on:
       catalog-db:
         condition: service_healthy
