@@ -30,6 +30,8 @@ Contrato operativo esperado:
 - `BACKEND_STACK`
 - `GATEWAY_ALLOWED_ORIGINS` derivada por `platform`
 
+Nota: `JWT_SECRET` se toma del repo `bazaar-backend-auth-service` y se comparte con `user-service` en el runtime integrado para validar access tokens.
+
 ## Outputs esperados
 
 - `scripts/up.sh`: deja el compose backend arriba, garantiza readiness del gateway y devuelve exit code 0
