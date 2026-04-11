@@ -30,6 +30,8 @@ Contrato operativo esperado:
 - `BACKEND_STACK`
 - `GATEWAY_ALLOWED_ORIGINS` derivada por `platform`
 
+Nota: `JWT_SECRET` se resuelve desde `bazaar-backend-auth-service/.env(.local)` (o desde la variable de entorno del host) y se inyecta por `platform` a `auth-service` y `user-service` para validar access tokens, sin compartir el `.env` completo de auth con otros servicios.
+
 ## Outputs esperados
 
 - `scripts/up.sh`: deja el compose backend arriba, garantiza readiness del gateway y devuelve exit code 0
