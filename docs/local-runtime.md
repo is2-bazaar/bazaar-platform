@@ -2,52 +2,47 @@
 
 ## Rol de `bazaar-platform`
 
-`bazaar-platform` existe para orquestar y documentar el entorno integrado local. No es un repo de deploy, no define cloud y no absorbe responsabilidad de los otros repos.
+`bazaar-platform` existe para orquestar y documentar el entorno integrado local. No es un repo de deploy, no define cloud y no absorbe responsabilidad de negocio de los otros repos.
 
 La vista general de ambientes y providers vive en [environments.md](./environments.md). Este documento se enfoca solo en el runtime local.
 
-## Unidad local: backend
+## Unidad local: backend integrado
 
-En esta etapa, `platform` trata a `bazaar-backend` como una sola unidad operativa:
+En esta etapa, `platform` es el owner del compose local del backend. El compose integra:
 
-- lo arranca mediante su entrypoint local de repo
-- no necesita conocer nombres de microservicios
-- consume solo la interfaz `scripts/dev/*`
+- `Bazaar-backend-api-gateway` como source of truth del gateway
+- `bazaar-backend` como source of truth de los microservicios que siguen en el monorepo
 
 Contrato operativo esperado:
 
-- repo disponible en disco
-- scripts de desarrollo estables
+- repos disponibles en disco
+- compose local estable en `infra/compose/docker-compose.platform.yml`
 - gateway accesible en `LOCAL_API_BASE_URL`
 - allowlist CORS del gateway calculada por `platform`
 
-## Interfaz estable de backend para `platform`
+## Inputs esperados
 
-### Inputs esperados
-
+- repo `Bazaar-backend-api-gateway` disponible en `BAZAAR_API_GATEWAY_PATH`
 - repo `bazaar-backend` disponible en `BAZAAR_BACKEND_PATH`
-- scripts ejecutables:
-  - `scripts/dev/up.sh`
-  - `scripts/dev/down.sh`
-  - `scripts/dev/status.sh`
-- gateway accesible en `LOCAL_API_BASE_URL`
-- `GATEWAY_ALLOWED_ORIGINS` provista por `platform` al invocar los entrypoints del backend
+- `LOCAL_API_BASE_URL`
+- `BACKEND_STACK`
+- `GATEWAY_ALLOWED_ORIGINS` derivada por `platform`
 
-### Outputs esperados
+## Outputs esperados
 
-- `up.sh`: deja el backend arriba, garantiza readiness del gateway y devuelve exit code 0
-- `down.sh`: apaga el backend y devuelve exit code 0
-- `status.sh`: imprime estado del compose y checks basicos del gateway
+- `scripts/up.sh`: deja el compose backend arriba, garantiza readiness del gateway y devuelve exit code 0
+- `scripts/down.sh`: apaga el compose backend y devuelve exit code 0
+- `scripts/status.sh`: imprime estado del compose y reachability basica del gateway
 
-### Significado de `ready`
+## Significado de `ready`
 
-Para `platform`, el contrato del backend considera al sistema `ready` cuando el gateway responde exitosamente en:
+Para `platform`, el backend integrado esta `ready` cuando el gateway responde exitosamente en:
 
 - `GET $LOCAL_API_BASE_URL/readyz`
 
-`platform` no implementa ese readiness por su cuenta: delega el arranque a `scripts/dev/up.sh` y asume que el repo backend solo devuelve exit code 0 una vez que esa condicion ya esta cumplida. Tampoco inspecciona microservicios individuales ni nombres internos del backend.
+`platform` usa esa señal como readiness del backend completo para desarrollo local. No inspecciona flujos de negocio ni clouds futuros.
 
-### CORS local
+## CORS local
 
 `platform` deriva `GATEWAY_ALLOWED_ORIGINS` desde:
 
@@ -55,20 +50,31 @@ Para `platform`, el contrato del backend considera al sistema `ready` cuando el 
 - `MOBILE_DEV_URL`
 - `PLATFORM_LAN_IP` cuando hace falta exponer origins equivalentes para dispositivo fisico o acceso por LAN
 
-El backend no debe hardcodear origins locales en codigo, compose ni scripts de desarrollo. Si se ejecuta standalone fuera de `platform`, cualquier necesidad de CORS queda bajo responsabilidad explicita del runtime que lo lanza.
+Ni `bazaar-backend` ni `Bazaar-backend-api-gateway` deben hardcodear origins locales en codigo para el flujo integrado.
 
-### Que puede cambiar sin romper a `platform`
+## Stacks soportados
 
-- nombres de microservicios internos
-- topologia interna del compose
+`BACKEND_STACK` define que parte del backend integrado se levanta:
+
+- `full`: gateway + todos los servicios actuales
+- `auth`: gateway + auth-service + user-service + dependencias minimas
+
+El gateway publica solo las rutas consistentes con el stack seleccionado para que `/readyz` represente lo que realmente esta levantado.
+
+## Que puede cambiar sin romper a `platform`
+
+- nombres internos de microservicios
+- topologia interna de builds en cada repo
 - detalles de bases de datos internas
+- deploy cloud o providers futuros
 
-### Que no puede cambiar sin actualizar `platform`
+## Que no puede cambiar sin actualizar `platform`
 
-- ubicacion o existencia de `scripts/dev/up.sh`, `down.sh`, `status.sh`
+- ubicacion del repo del gateway o del repo backend sin reflejarlo en defaults/envs
+- existencia del compose local integrado
 - existencia del gateway en `LOCAL_API_BASE_URL`
-- semantica operativa de `/readyz` como señal de backend listo
-- provision de `GATEWAY_ALLOWED_ORIGINS` durante el runtime integrado local
+- semantica operativa de `/readyz`
+- provision de `GATEWAY_ALLOWED_ORIGINS` durante el runtime local
 
 ## Unidad local: backoffice
 
@@ -96,56 +102,41 @@ El backoffice se ejecuta fuera de Docker:
 
 - `ENV_NAME`
 - `BAZAAR_BACKEND_PATH`
+- `BAZAAR_API_GATEWAY_PATH`
 - `BAZAAR_BACKOFFICE_PATH`
 - `BAZAAR_MOBILE_PATH`
 - `BACKEND_PROVIDER`
 - `DATABASE_PROVIDER`
 - `BACKOFFICE_PROVIDER`
 - `MOBILE_RUNTIME_MODE`
+- `BACKEND_STACK`
 - `LOCAL_API_BASE_URL`
 - `BACKOFFICE_DEV_URL`
 - `MOBILE_API_BASE_URL`
 - `MOBILE_DEV_URL`
-- `PLATFORM_LAN_IP` opcional para override manual de la IP LAN mostrada al usuario
+  Valor base HTTP del bundler de Expo. `platform` deriva desde ahi la URL `exp://...` para Expo Go cuando detecta una IP LAN.
+- `PLATFORM_LAN_IP`
 
 ### Defaults efectivos
 
 - `ENV_NAME=local`
 - `BAZAAR_BACKEND_PATH=../bazaar-backend`
+- `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
 - `BACKEND_PROVIDER=local-docker`
 - `DATABASE_PROVIDER=local-docker`
 - `BACKOFFICE_PROVIDER=local-vite`
 - `MOBILE_RUNTIME_MODE=local-expo`
+- `BACKEND_STACK=full`
 - `LOCAL_API_BASE_URL=http://localhost:8080`
 - `BACKOFFICE_DEV_URL=http://localhost:5173`
 - `MOBILE_API_BASE_URL=http://localhost:8080`
 - `MOBILE_DEV_URL=http://localhost:8081`
 
-### En backend
-
-- variables de runtime y servicio
-- credenciales locales de base de datos
-- URLs entre servicios
-- configuracion propia del compose o de los binarios
-
-### En backoffice
-
-- `BACKOFFICE_API_BASE_URL`
-- `BACKOFFICE_DEV_URL`
-- futuras variables propias del frontend
-
-### En mobile
-
-- `MOBILE_API_BASE_URL`
-- `MOBILE_DEV_URL`
-- futuras variables propias del runtime Expo
-
 ## Decisiones explicitamente postergadas
 
-- compose integrador propio en `platform`
-- cloud y deploy remoto
+- deploy cloud por repo
 - observabilidad real cross-repo
 - contratos ejecutables de staging o production
 - smoke tests de negocio end-to-end
