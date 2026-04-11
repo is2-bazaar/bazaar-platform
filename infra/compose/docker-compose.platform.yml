@@ -21,14 +21,14 @@ services:
       SERVICE_NAME: "${API_GATEWAY_SERVICE_NAME:-api-gateway}"
       GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,inventory,cart,orders,payments,notifications}"
       GATEWAY_ALLOWED_ORIGINS: "${GATEWAY_ALLOWED_ORIGINS:-}"
-      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8080}"
-      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:8080}"
-      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8080}"
-      INVENTORY_SERVICE_URL: "${INVENTORY_SERVICE_URL:-http://inventory-service:8080}"
-      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:8080}"
-      ORDERS_SERVICE_URL: "${ORDERS_SERVICE_URL:-http://orders-service:8080}"
-      PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payments-service:8080}"
-      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notifications-service:8080}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      INVENTORY_SERVICE_URL: "${INVENTORY_SERVICE_URL:-http://inventory-service:${INVENTORY_SERVICE_PORT:-8080}}"
+      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
+      ORDERS_SERVICE_URL: "${ORDERS_SERVICE_URL:-http://orders-service:${ORDERS_SERVICE_PORT:-8080}}"
+      PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payments-service:${PAYMENTS_SERVICE_PORT:-8080}}"
+      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
     ports:
       - "${API_GATEWAY_PORT:-8080}:8080"
 
@@ -53,12 +53,12 @@ services:
       BREVO_SENDER_NAME: "${BREVO_SENDER_NAME:-Bazaar}"
       AUTH_RESET_CODE_TTL_MINUTES: "${AUTH_RESET_CODE_TTL_MINUTES:-15}"
       AUTH_RESET_CODE_SUBJECT: "${AUTH_RESET_CODE_SUBJECT:-Codigo de recuperacion de Bazaar}"
-      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:8080}"
+      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
     depends_on:
       auth-db:
         condition: service_healthy
       user-service:
-        condition: service_started
+        condition: service_healthy
 
   catalog-service:
     build:
@@ -68,7 +68,8 @@ services:
       PORT: "${CATALOG_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${CATALOG_SERVICE_DEPENDENCY_TARGETS:-catalog-db:5432}"
     depends_on:
-      - catalog-db
+      catalog-db:
+        condition: service_healthy
 
   inventory-service:
     build:
@@ -78,7 +79,8 @@ services:
       PORT: "${INVENTORY_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${INVENTORY_SERVICE_DEPENDENCY_TARGETS:-inventory-db:5432}"
     depends_on:
-      - inventory-db
+      inventory-db:
+        condition: service_healthy
 
   cart-service:
     build:
@@ -88,7 +90,8 @@ services:
       PORT: "${CART_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-cart-db:5432}"
     depends_on:
-      - cart-db
+      cart-db:
+        condition: service_healthy
 
   orders-service:
     build:
@@ -96,12 +99,16 @@ services:
       dockerfile: services/orders-service/Dockerfile
     environment:
       PORT: "${ORDERS_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${ORDERS_SERVICE_DEPENDENCY_TARGETS:-orders-db:5432,payments-service:8080,inventory-service:8080,notifications-service:8080}"
+      DEPENDENCY_TARGETS: "${ORDERS_SERVICE_DEPENDENCY_TARGETS:-orders-db:5432,payments-service:${PAYMENTS_SERVICE_PORT:-8080},inventory-service:${INVENTORY_SERVICE_PORT:-8080},notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
     depends_on:
-      - orders-db
-      - payments-service
-      - inventory-service
-      - notifications-service
+      orders-db:
+        condition: service_healthy
+      payments-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      notifications-service:
+        condition: service_started
 
   user-service:
     build:
@@ -116,7 +123,7 @@ services:
       USER_DB_PASSWORD: "${USER_DB_PASSWORD:-postgres}"
       USER_DB_NAME: "${USER_DB_NAME:-users}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8080}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
     depends_on:
       user-db:
         condition: service_healthy
@@ -129,7 +136,8 @@ services:
       PORT: "${PAYMENTS_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${PAYMENTS_SERVICE_DEPENDENCY_TARGETS:-payments-db:5432}"
     depends_on:
-      - payments-db
+      payments-db:
+        condition: service_healthy
 
   notifications-service:
     build:
@@ -139,7 +147,8 @@ services:
       PORT: "${NOTIFICATIONS_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${NOTIFICATIONS_SERVICE_DEPENDENCY_TARGETS:-notifications-db:5432}"
     depends_on:
-      - notifications-db
+      notifications-db:
+        condition: service_healthy
 
   user-db:
     <<: *postgres-db
@@ -148,7 +157,7 @@ services:
       POSTGRES_USER: "${USER_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${USER_DB_PASSWORD:-postgres}"
     ports:
-      - "${USER_DB_PORT:-5433}:5432"
+      - "${USER_DB_HOST_PORT:-5433}:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -176,9 +185,12 @@ services:
       POSTGRES_USER: "${CATALOG_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${CATALOG_DB_PASSWORD:-postgres}"
     ports:
-      - "${CATALOG_DB_PORT:-5434}:5432"
+      - "${CATALOG_DB_HOST_PORT:-5434}:5432"
     volumes:
       - catalog-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${CATALOG_DB_USER:-postgres} -d ${CATALOG_DB_NAME:-catalog}"]
 
   inventory-db:
     <<: *postgres-db
@@ -187,9 +199,12 @@ services:
       POSTGRES_USER: "${INVENTORY_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${INVENTORY_DB_PASSWORD:-postgres}"
     ports:
-      - "${INVENTORY_DB_PORT:-5435}:5432"
+      - "${INVENTORY_DB_HOST_PORT:-5435}:5432"
     volumes:
       - inventory-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${INVENTORY_DB_USER:-postgres} -d ${INVENTORY_DB_NAME:-inventory}"]
 
   cart-db:
     <<: *postgres-db
@@ -198,9 +213,12 @@ services:
       POSTGRES_USER: "${CART_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
     ports:
-      - "${CART_DB_PORT:-5436}:5432"
+      - "${CART_DB_HOST_PORT:-5436}:5432"
     volumes:
       - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${CART_DB_USER:-postgres} -d ${CART_DB_NAME:-cart}"]
 
   orders-db:
     <<: *postgres-db
@@ -209,9 +227,12 @@ services:
       POSTGRES_USER: "${ORDERS_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${ORDERS_DB_PASSWORD:-postgres}"
     ports:
-      - "${ORDERS_DB_PORT:-5437}:5432"
+      - "${ORDERS_DB_HOST_PORT:-5437}:5432"
     volumes:
       - orders-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${ORDERS_DB_USER:-postgres} -d ${ORDERS_DB_NAME:-orders}"]
 
   payments-db:
     <<: *postgres-db
@@ -220,9 +241,12 @@ services:
       POSTGRES_USER: "${PAYMENTS_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${PAYMENTS_DB_PASSWORD:-postgres}"
     ports:
-      - "${PAYMENTS_DB_PORT:-5438}:5432"
+      - "${PAYMENTS_DB_HOST_PORT:-5438}:5432"
     volumes:
       - payments-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${PAYMENTS_DB_USER:-postgres} -d ${PAYMENTS_DB_NAME:-payments}"]
 
   notifications-db:
     <<: *postgres-db
@@ -231,9 +255,12 @@ services:
       POSTGRES_USER: "${NOTIFICATIONS_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${NOTIFICATIONS_DB_PASSWORD:-postgres}"
     ports:
-      - "${NOTIFICATIONS_DB_PORT:-5439}:5432"
+      - "${NOTIFICATIONS_DB_HOST_PORT:-5439}:5432"
     volumes:
       - notifications-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${NOTIFICATIONS_DB_USER:-postgres} -d ${NOTIFICATIONS_DB_NAME:-notifications}"]
 
 volumes:
   user-db-data:

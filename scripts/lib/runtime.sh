@@ -72,14 +72,28 @@ platform_mobile_device_probe_url() {
     return 1
   fi
 
-  local mobile_origin="${MOBILE_DEV_URL#*://}"
+  local mobile_host
+  local mobile_port
   local mobile_scheme="http"
 
   if [[ "$MOBILE_DEV_URL" == *"://"* ]]; then
     mobile_scheme="${MOBILE_DEV_URL%%://*}"
   fi
 
-  printf '%s://%s:%s\n' "$mobile_scheme" "$PLATFORM_LAN_IP" "${mobile_origin##*:}"
+  mobile_host="$(platform_url_host "$MOBILE_DEV_URL")"
+  mobile_port="$(platform_url_port "$MOBILE_DEV_URL")"
+
+  if [[ -n "$mobile_port" ]]; then
+    printf '%s://%s:%s\n' "$mobile_scheme" "$PLATFORM_LAN_IP" "$mobile_port"
+    return 0
+  fi
+
+  if [[ -z "$mobile_host" ]]; then
+    printf '%s://%s\n' "$mobile_scheme" "$PLATFORM_LAN_IP"
+    return 0
+  fi
+
+  printf '%s://%s\n' "$mobile_scheme" "$PLATFORM_LAN_IP"
 }
 
 platform_mobile_device_url() {
