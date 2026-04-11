@@ -33,7 +33,7 @@ Se descarta porque `bazaar-platform` debe ser el runtime local compartido una ve
 
 - el gateway tiene ownership claro y repo propio
 - el runtime local sigue siendo un comando unico para el equipo
-- la extraccion futura de `auth-service` y otros servicios no obliga a rediseñar otra vez el entorno local
+- la extraccion de `auth-service` y la futura separacion de otros servicios no obliga a rediseñar otra vez el entorno local
 
 ### Negativas
 

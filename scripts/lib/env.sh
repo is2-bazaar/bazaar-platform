@@ -72,6 +72,7 @@ load_platform_env() {
     ENV_NAME
     BAZAAR_BACKEND_PATH
     BAZAAR_API_GATEWAY_PATH
+    BAZAAR_AUTH_SERVICE_PATH
     BAZAAR_BACKOFFICE_PATH
     BAZAAR_MOBILE_PATH
     BACKEND_PROVIDER
@@ -106,7 +107,7 @@ load_platform_env() {
 
   platform_restore_env_overrides "${snapshot_vars[@]}"
 
-  for path_var in BAZAAR_BACKEND_PATH BAZAAR_API_GATEWAY_PATH BAZAAR_BACKOFFICE_PATH BAZAAR_MOBILE_PATH; do
+  for path_var in BAZAAR_BACKEND_PATH BAZAAR_API_GATEWAY_PATH BAZAAR_AUTH_SERVICE_PATH BAZAAR_BACKOFFICE_PATH BAZAAR_MOBILE_PATH; do
     printf -v "$path_var" '%s' "$(resolve_from_root "$PLATFORM_ROOT" "${!path_var-}")"
   done
 
@@ -119,6 +120,7 @@ load_platform_env() {
 
   require_env BAZAAR_BACKEND_PATH
   require_env BAZAAR_API_GATEWAY_PATH
+  require_env BAZAAR_AUTH_SERVICE_PATH
   require_env BAZAAR_BACKOFFICE_PATH
   require_env BAZAAR_MOBILE_PATH
   require_env LOCAL_API_BASE_URL

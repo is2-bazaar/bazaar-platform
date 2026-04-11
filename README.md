@@ -68,6 +68,7 @@ Defaults operativos:
 - `ENV_NAME=local`
 - `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
+- `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
 - `BACKEND_PROVIDER=local-docker`
@@ -115,6 +116,7 @@ Atajos opcionales para levantar una sola unidad:
 ## Contrato local
 
 - `Bazaar-backend-api-gateway` vive como repo hermano y es el source of truth del gateway.
+- `bazaar-backend-auth-service` vive como repo hermano y es el source of truth de `auth-service`.
 - `bazaar-backend` vive como repo hermano y aporta los microservicios que siguen dentro del monorepo.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
