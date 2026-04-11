@@ -41,12 +41,11 @@ platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 
 [[ -f "$BAZAAR_API_GATEWAY_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_API_GATEWAY_PATH/Dockerfile"
 [[ -f "$PLATFORM_COMPOSE_FILE" ]] || platform_fail "falta el compose local de platform: $PLATFORM_COMPOSE_FILE"
-[[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/up.sh"
-[[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/down.sh"
-[[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/status.sh"
-[[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/up.sh"
-[[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/down.sh"
-[[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/status.sh"
+
+for script_name in up.sh down.sh status.sh; do
+  platform_require_repo_script "bazaar-backoffice" "$BAZAAR_BACKOFFICE_PATH" "$script_name"
+  platform_require_repo_script "bazaar-mobile" "$BAZAAR_MOBILE_PATH" "$script_name"
+done
 
 platform_ok "repos y compose local detectados"
 

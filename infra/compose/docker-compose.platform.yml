@@ -1,5 +1,16 @@
 name: bazaar-platform
 
+x-backend-build: &backend-build
+  context: ${BAZAAR_BACKEND_PATH}
+
+x-postgres-db: &postgres-db
+  image: postgres:17-alpine
+
+x-postgres-healthcheck: &postgres-healthcheck
+  interval: 5s
+  timeout: 5s
+  retries: 10
+
 services:
   api-gateway:
     build:
@@ -23,7 +34,7 @@ services:
 
   auth-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/auth-service/Dockerfile
     environment:
       PORT: "${AUTH_SERVICE_PORT:-8080}"
@@ -51,7 +62,7 @@ services:
 
   catalog-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/catalog-service/Dockerfile
     environment:
       PORT: "${CATALOG_SERVICE_PORT:-8080}"
@@ -61,7 +72,7 @@ services:
 
   inventory-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/inventory-service/Dockerfile
     environment:
       PORT: "${INVENTORY_SERVICE_PORT:-8080}"
@@ -71,7 +82,7 @@ services:
 
   cart-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/cart-service/Dockerfile
     environment:
       PORT: "${CART_SERVICE_PORT:-8080}"
@@ -81,7 +92,7 @@ services:
 
   orders-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/orders-service/Dockerfile
     environment:
       PORT: "${ORDERS_SERVICE_PORT:-8080}"
@@ -94,7 +105,7 @@ services:
 
   user-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/user-service/Dockerfile
     environment:
       PORT: "${USER_SERVICE_PORT:-8080}"
@@ -112,7 +123,7 @@ services:
 
   payments-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/payments-service/Dockerfile
     environment:
       PORT: "${PAYMENTS_SERVICE_PORT:-8080}"
@@ -122,7 +133,7 @@ services:
 
   notifications-service:
     build:
-      context: ${BAZAAR_BACKEND_PATH}
+      <<: *backend-build
       dockerfile: services/notifications-service/Dockerfile
     environment:
       PORT: "${NOTIFICATIONS_SERVICE_PORT:-8080}"
@@ -131,7 +142,7 @@ services:
       - notifications-db
 
   user-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${USER_DB_NAME:-users}"
       POSTGRES_USER: "${USER_DB_USER:-postgres}"
@@ -141,13 +152,11 @@ services:
     volumes:
       - user-db-data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER:-postgres} -d ${USER_DB_NAME:-users}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   auth-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${AUTH_DB_NAME:-auth}"
       POSTGRES_USER: "${AUTH_DB_USER:-postgres}"
@@ -157,13 +166,11 @@ services:
     volumes:
       - auth-db-data:/var/lib/postgresql/data
     healthcheck:
+      <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER:-postgres} -d ${AUTH_DB_NAME:-auth}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   catalog-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${CATALOG_DB_NAME:-catalog}"
       POSTGRES_USER: "${CATALOG_DB_USER:-postgres}"
@@ -174,7 +181,7 @@ services:
       - catalog-db-data:/var/lib/postgresql/data
 
   inventory-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${INVENTORY_DB_NAME:-inventory}"
       POSTGRES_USER: "${INVENTORY_DB_USER:-postgres}"
@@ -185,7 +192,7 @@ services:
       - inventory-db-data:/var/lib/postgresql/data
 
   cart-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${CART_DB_NAME:-cart}"
       POSTGRES_USER: "${CART_DB_USER:-postgres}"
@@ -196,7 +203,7 @@ services:
       - cart-db-data:/var/lib/postgresql/data
 
   orders-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${ORDERS_DB_NAME:-orders}"
       POSTGRES_USER: "${ORDERS_DB_USER:-postgres}"
@@ -207,7 +214,7 @@ services:
       - orders-db-data:/var/lib/postgresql/data
 
   payments-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${PAYMENTS_DB_NAME:-payments}"
       POSTGRES_USER: "${PAYMENTS_DB_USER:-postgres}"
@@ -218,7 +225,7 @@ services:
       - payments-db-data:/var/lib/postgresql/data
 
   notifications-db:
-    image: postgres:17-alpine
+    <<: *postgres-db
     environment:
       POSTGRES_DB: "${NOTIFICATIONS_DB_NAME:-notifications}"
       POSTGRES_USER: "${NOTIFICATIONS_DB_USER:-postgres}"
