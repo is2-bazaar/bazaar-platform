@@ -69,6 +69,7 @@ Defaults operativos:
 - `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
 - `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
+- `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
 - `BACKEND_PROVIDER=local-docker`

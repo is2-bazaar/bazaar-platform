@@ -26,7 +26,7 @@ platform_backend_select_stack() {
       )
       ;;
     auth)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth"
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user"
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
         auth-service
@@ -91,6 +91,7 @@ platform_compose() {
   BAZAAR_BACKEND_PATH="$BAZAAR_BACKEND_PATH" \
     BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
     BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH" \
+    BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
     JWT_SECRET="$resolved_jwt_secret" \
     GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \
     GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES" \

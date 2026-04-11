@@ -12,6 +12,7 @@ En esta etapa, `platform` es el owner del compose local del backend. El compose 
 
 - `Bazaar-backend-api-gateway` como source of truth del gateway
 - `bazaar-backend-auth-service` como source of truth de `auth-service`
+- `bazaar-backend-user-service` como source of truth de `user-service`
 - `bazaar-backend` como source of truth de los microservicios que siguen en el monorepo
 
 Contrato operativo esperado:
@@ -25,6 +26,7 @@ Contrato operativo esperado:
 
 - repo `Bazaar-backend-api-gateway` disponible en `BAZAAR_API_GATEWAY_PATH`
 - repo `bazaar-backend-auth-service` disponible en `BAZAAR_AUTH_SERVICE_PATH` (debe incluir `.env` o `.env.local` para configuracion interna del servicio)
+- repo `bazaar-backend-user-service` disponible en `BAZAAR_USER_SERVICE_PATH` (debe incluir `.env` o `.env.local` para configuracion interna del servicio)
 - repo `bazaar-backend` disponible en `BAZAAR_BACKEND_PATH`
 - `LOCAL_API_BASE_URL`
 - `BACKEND_STACK`
@@ -108,6 +110,7 @@ El backoffice se ejecuta fuera de Docker:
 - `BAZAAR_BACKEND_PATH`
 - `BAZAAR_API_GATEWAY_PATH`
 - `BAZAAR_AUTH_SERVICE_PATH`
+- `BAZAAR_USER_SERVICE_PATH`
 - `BAZAAR_BACKOFFICE_PATH`
 - `BAZAAR_MOBILE_PATH`
 - `BACKEND_PROVIDER`
@@ -128,6 +131,7 @@ El backoffice se ejecuta fuera de Docker:
 - `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
 - `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
+- `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
 - `BACKEND_PROVIDER=local-docker`
