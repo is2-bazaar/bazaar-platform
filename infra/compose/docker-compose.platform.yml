@@ -109,8 +109,13 @@ services:
 
   user-service:
     build:
-      <<: *backend-build
-      dockerfile: services/user-service/Dockerfile
+      context: ${BAZAAR_USER_SERVICE_PATH}
+      dockerfile: Dockerfile
+    env_file:
+      - path: ${BAZAAR_USER_SERVICE_PATH}/.env
+        required: false
+      - path: ${BAZAAR_USER_SERVICE_PATH}/.env.local
+        required: false
     environment:
       PORT: "${USER_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${USER_SERVICE_DEPENDENCY_TARGETS:-user-db:5432}"

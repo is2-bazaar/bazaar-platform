@@ -44,11 +44,13 @@ platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 [[ -d "$BAZAAR_BACKEND_PATH" ]] || platform_fail "no se encontro bazaar-backend en $BAZAAR_BACKEND_PATH"
 [[ -d "$BAZAAR_API_GATEWAY_PATH" ]] || platform_fail "no se encontro Bazaar-backend-api-gateway en $BAZAAR_API_GATEWAY_PATH"
 [[ -d "$BAZAAR_AUTH_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-auth-service en $BAZAAR_AUTH_SERVICE_PATH"
+[[ -d "$BAZAAR_USER_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-user-service en $BAZAAR_USER_SERVICE_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
 [[ -d "$BAZAAR_MOBILE_PATH" ]] || platform_fail "no se encontro bazaar-mobile en $BAZAAR_MOBILE_PATH"
 
 [[ -f "$BAZAAR_API_GATEWAY_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_API_GATEWAY_PATH/Dockerfile"
 [[ -f "$BAZAAR_AUTH_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_AUTH_SERVICE_PATH/Dockerfile"
+[[ -f "$BAZAAR_USER_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_USER_SERVICE_PATH/Dockerfile"
 [[ -f "$PLATFORM_COMPOSE_FILE" ]] || platform_fail "falta el compose local de platform: $PLATFORM_COMPOSE_FILE"
 
 for script_name in up.sh down.sh status.sh; do
