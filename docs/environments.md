@@ -8,7 +8,7 @@
 
 | Ambiente | Backend | Base de datos | Backoffice | Mobile | Orquestado por `platform` | API consumida (Backoffice / Mobile) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Local | Stack local del backend | Local, dentro del stack backend | Dev server local con Vite | Runtime local con Expo | Si, via entrypoints `scripts/dev/*` de cada repo | `LOCAL_API_BASE_URL` / `MOBILE_API_BASE_URL` |
+| Local | Compose integrado en `bazaar-platform` usando `Bazaar-backend-api-gateway` + `bazaar-backend` | Local, dentro del compose de platform | Dev server local con Vite | Runtime local con Expo | Si | `LOCAL_API_BASE_URL` / `MOBILE_API_BASE_URL` |
 | Staging | Render | Neon | Vercel | Manual, flujo separado | No | `BACKEND_BASE_URL` / URL publica del backend staging |
 | Production | Render | Neon | Vercel | Manual, release separado | No | `BACKEND_BASE_URL` / URL publica del backend production |
 
