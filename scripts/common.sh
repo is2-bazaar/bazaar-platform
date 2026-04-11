@@ -52,6 +52,7 @@ load_platform_env() {
   local defaults_file
   local existing_env_name="${ENV_NAME:-}"
   local existing_backend_path="${BAZAAR_BACKEND_PATH:-}"
+  local existing_api_gateway_path="${BAZAAR_API_GATEWAY_PATH:-}"
   local existing_backoffice_path="${BAZAAR_BACKOFFICE_PATH:-}"
   local existing_mobile_path="${BAZAAR_MOBILE_PATH:-}"
   local existing_backend_provider="${BACKEND_PROVIDER:-}"
@@ -78,6 +79,7 @@ load_platform_env() {
 
   [[ -n "$existing_env_name" ]] && ENV_NAME="$existing_env_name"
   [[ -n "$existing_backend_path" ]] && BAZAAR_BACKEND_PATH="$existing_backend_path"
+  [[ -n "$existing_api_gateway_path" ]] && BAZAAR_API_GATEWAY_PATH="$existing_api_gateway_path"
   [[ -n "$existing_backoffice_path" ]] && BAZAAR_BACKOFFICE_PATH="$existing_backoffice_path"
   [[ -n "$existing_mobile_path" ]] && BAZAAR_MOBILE_PATH="$existing_mobile_path"
   [[ -n "$existing_backend_provider" ]] && BACKEND_PROVIDER="$existing_backend_provider"
@@ -92,14 +94,17 @@ load_platform_env() {
   [[ -n "$existing_backend_stack" ]] && BACKEND_STACK="$existing_backend_stack"
 
   BAZAAR_BACKEND_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_BACKEND_PATH}")"
+  BAZAAR_API_GATEWAY_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_API_GATEWAY_PATH}")"
   BAZAAR_BACKOFFICE_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_BACKOFFICE_PATH}")"
   BAZAAR_MOBILE_PATH="$(resolve_from_root "$PLATFORM_ROOT" "${BAZAAR_MOBILE_PATH}")"
+  PLATFORM_COMPOSE_FILE="$PLATFORM_ROOT/infra/compose/docker-compose.platform.yml"
   LOCAL_API_BASE_URL="${LOCAL_API_BASE_URL%/}"
   BACKOFFICE_DEV_URL="${BACKOFFICE_DEV_URL%/}"
   MOBILE_API_BASE_URL="${MOBILE_API_BASE_URL%/}"
   MOBILE_DEV_URL="${MOBILE_DEV_URL%/}"
 
   require_env BAZAAR_BACKEND_PATH
+  require_env BAZAAR_API_GATEWAY_PATH
   require_env BAZAAR_BACKOFFICE_PATH
   require_env BAZAAR_MOBILE_PATH
   require_env LOCAL_API_BASE_URL
@@ -313,6 +318,71 @@ platform_backend_allowed_origins() {
   printf '%s\n' "$origins"
 }
 
+platform_backend_select_stack() {
+  case "${BACKEND_STACK:-full}" in
+    full)
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,inventory,cart,orders,payments,notifications"
+      PLATFORM_COMPOSE_SERVICES=(
+        api-gateway
+        auth-service
+        user-service
+        catalog-service
+        inventory-service
+        cart-service
+        orders-service
+        payments-service
+        notifications-service
+      )
+      ;;
+    auth)
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth"
+      PLATFORM_COMPOSE_SERVICES=(
+        api-gateway
+        auth-service
+        user-service
+      )
+      ;;
+    *)
+      platform_fail "BACKEND_STACK invalido: ${BACKEND_STACK:-}. Valores soportados: full, auth"
+      ;;
+  esac
+}
+
+platform_compose() {
+  local allowed_origins
+  allowed_origins="$(platform_backend_allowed_origins)"
+
+  BAZAAR_BACKEND_PATH="$BAZAAR_BACKEND_PATH" \
+    BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
+    GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \
+    GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES" \
+    docker compose -f "$PLATFORM_COMPOSE_FILE" "$@"
+}
+
+platform_http_probe() {
+  local url="$1"
+
+  curl --connect-timeout 2 --max-time 5 -fsS "$url" >/dev/null 2>&1
+}
+
+platform_wait_for_ready() {
+  local url="$1"
+  local timeout_seconds="${2:-90}"
+  local deadline
+
+  deadline=$((SECONDS + timeout_seconds))
+
+  while (( SECONDS < deadline )); do
+    if platform_http_probe "$url"; then
+      return 0
+    fi
+
+    sleep 2
+  done
+
+  return 1
+}
+
 platform_mobile_effective_api_base_url() {
   local api_base_url="$MOBILE_API_BASE_URL"
   local api_host
@@ -347,7 +417,7 @@ platform_mobile_device_api_url() {
   platform_mobile_effective_api_base_url
 }
 
-platform_mobile_device_url() {
+platform_mobile_device_probe_url() {
   if [[ -z "${PLATFORM_LAN_IP:-}" ]]; then
     return 1
   fi
@@ -362,13 +432,17 @@ platform_mobile_device_url() {
   printf '%s://%s:%s\n' "$mobile_scheme" "$PLATFORM_LAN_IP" "${mobile_origin##*:}"
 }
 
-platform_run_backend_script() {
-  local script_name="$1"
+platform_mobile_device_url() {
+  local probe_url
+  local expo_scheme="exp"
 
-  BACKEND_LOCAL_API_BASE_URL="$LOCAL_API_BASE_URL" \
-    BACKEND_STACK="${BACKEND_STACK:-full}" \
-    GATEWAY_ALLOWED_ORIGINS="$(platform_backend_allowed_origins)" \
-    bash "$BAZAAR_BACKEND_PATH/scripts/dev/$script_name"
+  probe_url="$(platform_mobile_device_probe_url)" || return 1
+
+  if [[ "$probe_url" == https://* ]]; then
+    expo_scheme="exps"
+  fi
+
+  printf '%s://%s\n' "$expo_scheme" "${probe_url#*://}"
 }
 
 platform_run_backoffice_script() {
@@ -381,8 +455,13 @@ platform_run_backoffice_script() {
 
 platform_run_mobile_script() {
   local script_name="$1"
+  local mobile_dev_url="$MOBILE_DEV_URL"
+
+  if [[ -n "${PLATFORM_LAN_IP:-}" ]]; then
+    mobile_dev_url="$(platform_mobile_device_probe_url)"
+  fi
 
   MOBILE_API_BASE_URL="$(platform_mobile_effective_api_base_url)" \
-    MOBILE_DEV_URL="$MOBILE_DEV_URL" \
+    MOBILE_DEV_URL="$mobile_dev_url" \
     bash "$BAZAAR_MOBILE_PATH/scripts/dev/$script_name"
 }

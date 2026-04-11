@@ -24,6 +24,7 @@ require_env BACKEND_PROVIDER
 require_env DATABASE_PROVIDER
 require_env BACKOFFICE_PROVIDER
 require_env MOBILE_RUNTIME_MODE
+require_env BAZAAR_API_GATEWAY_PATH
 require_env MOBILE_API_BASE_URL
 require_env MOBILE_DEV_URL
 
@@ -34,12 +35,12 @@ fi
 platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 
 [[ -d "$BAZAAR_BACKEND_PATH" ]] || platform_fail "no se encontro bazaar-backend en $BAZAAR_BACKEND_PATH"
+[[ -d "$BAZAAR_API_GATEWAY_PATH" ]] || platform_fail "no se encontro Bazaar-backend-api-gateway en $BAZAAR_API_GATEWAY_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
 [[ -d "$BAZAAR_MOBILE_PATH" ]] || platform_fail "no se encontro bazaar-mobile en $BAZAAR_MOBILE_PATH"
 
-[[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_BACKEND_PATH/scripts/dev/up.sh"
-[[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_BACKEND_PATH/scripts/dev/down.sh"
-[[ -f "$BAZAAR_BACKEND_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_BACKEND_PATH/scripts/dev/status.sh"
+[[ -f "$BAZAAR_API_GATEWAY_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_API_GATEWAY_PATH/Dockerfile"
+[[ -f "$PLATFORM_COMPOSE_FILE" ]] || platform_fail "falta el compose local de platform: $PLATFORM_COMPOSE_FILE"
 [[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/up.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/up.sh"
 [[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/down.sh"
 [[ -f "$BAZAAR_BACKOFFICE_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_BACKOFFICE_PATH/scripts/dev/status.sh"
@@ -47,7 +48,7 @@ platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 [[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/down.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/down.sh"
 [[ -f "$BAZAAR_MOBILE_PATH/scripts/dev/status.sh" ]] || platform_fail "falta $BAZAAR_MOBILE_PATH/scripts/dev/status.sh"
 
-platform_ok "repos y entrypoints locales detectados"
+platform_ok "repos y compose local detectados"
 
 if [[ ! -d "$BAZAAR_BACKOFFICE_PATH/node_modules" ]]; then
   platform_warn "backoffice no tiene dependencias instaladas; ejecutar npm install en $BAZAAR_BACKOFFICE_PATH"
