@@ -10,6 +10,7 @@ platform_backend_select_stack
 
 platform_info "backend path: $BAZAAR_BACKEND_PATH"
 platform_info "api gateway path: $BAZAAR_API_GATEWAY_PATH"
+platform_info "auth-service path: $BAZAAR_AUTH_SERVICE_PATH"
 platform_info "backoffice path: $BAZAAR_BACKOFFICE_PATH"
 platform_info "mobile path: $BAZAAR_MOBILE_PATH"
 platform_info "compose file: $PLATFORM_COMPOSE_FILE"

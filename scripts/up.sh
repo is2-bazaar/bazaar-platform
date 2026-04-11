@@ -12,6 +12,7 @@ platform_backend_select_stack
 
 platform_info "levantando stack backend local desde $PLATFORM_COMPOSE_FILE"
 platform_info "gateway repo: $BAZAAR_API_GATEWAY_PATH"
+platform_info "auth-service repo: $BAZAAR_AUTH_SERVICE_PATH"
 platform_info "backend repo: $BAZAAR_BACKEND_PATH"
 platform_info "stack seleccionado: ${BACKEND_STACK:-full}"
 platform_info "rutas habilitadas en gateway: $PLATFORM_GATEWAY_ENABLED_SERVICES"

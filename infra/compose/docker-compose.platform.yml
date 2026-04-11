@@ -34,8 +34,8 @@ services:
 
   auth-service:
     build:
-      <<: *backend-build
-      dockerfile: services/auth-service/Dockerfile
+      context: ${BAZAAR_AUTH_SERVICE_PATH}
+      dockerfile: Dockerfile
     environment:
       PORT: "${AUTH_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${AUTH_SERVICE_DEPENDENCY_TARGETS:-auth-db:5432}"
@@ -59,6 +59,11 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
+    healthcheck:
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/readyz >/dev/null 2>&1"]
 
   catalog-service:
     build:
@@ -127,6 +132,11 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+    healthcheck:
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/readyz >/dev/null 2>&1"]
 
   payments-service:
     build:
