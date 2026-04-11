@@ -34,8 +34,13 @@ services:
 
   auth-service:
     build:
-      <<: *backend-build
-      dockerfile: services/auth-service/Dockerfile
+      context: ${BAZAAR_AUTH_SERVICE_PATH}
+      dockerfile: Dockerfile
+    env_file:
+      - path: ${BAZAAR_AUTH_SERVICE_PATH}/.env
+        required: false
+      - path: ${BAZAAR_AUTH_SERVICE_PATH}/.env.local
+        required: false
     environment:
       PORT: "${AUTH_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${AUTH_SERVICE_DEPENDENCY_TARGETS:-auth-db:5432}"
@@ -47,18 +52,12 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       JWT_ACCESS_TOKEN_TTL_MINUTES: "${JWT_ACCESS_TOKEN_TTL_MINUTES:-15}"
       JWT_REFRESH_TOKEN_TTL_HOURS: "${JWT_REFRESH_TOKEN_TTL_HOURS:-168}"
-      BREVO_BASE_URL: "${BREVO_BASE_URL:-https://api.brevo.com/v3}"
-      BREVO_API_KEY: "${BREVO_API_KEY:-replace-with-your-brevo-api-key}"
-      BREVO_SENDER_EMAIL: "${BREVO_SENDER_EMAIL:-no-reply@bazaar.dev}"
-      BREVO_SENDER_NAME: "${BREVO_SENDER_NAME:-Bazaar}"
-      AUTH_RESET_CODE_TTL_MINUTES: "${AUTH_RESET_CODE_TTL_MINUTES:-15}"
-      AUTH_RESET_CODE_SUBJECT: "${AUTH_RESET_CODE_SUBJECT:-Codigo de recuperacion de Bazaar}"
       USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
     depends_on:
       auth-db:
         condition: service_healthy
       user-service:
-        condition: service_healthy
+        condition: service_started
 
   catalog-service:
     build:
