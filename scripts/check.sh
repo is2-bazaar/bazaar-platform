@@ -16,6 +16,12 @@ if ! docker compose version >/dev/null 2>&1; then
   platform_fail "docker compose no esta disponible"
 fi
 
+# Validate compose file compatibility (including env_file path/required support)
+# before running the local runtime workflow.
+if ! docker compose -f "$PLATFORM_COMPOSE_FILE" config >/dev/null 2>&1; then
+  platform_fail "docker compose no pudo procesar $PLATFORM_COMPOSE_FILE (posible version incompatible o compose invalido)"
+fi
+
 platform_ok "docker, docker compose, node, npm y curl disponibles"
 platform_ok "defaults cargados correctamente"
 

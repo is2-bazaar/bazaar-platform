@@ -50,8 +50,6 @@ services:
       AUTH_DB_PASSWORD: "${AUTH_DB_PASSWORD:-postgres}"
       AUTH_DB_NAME: "${AUTH_DB_NAME:-auth}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      JWT_ACCESS_TOKEN_TTL_MINUTES: "${JWT_ACCESS_TOKEN_TTL_MINUTES:-15}"
-      JWT_REFRESH_TOKEN_TTL_HOURS: "${JWT_REFRESH_TOKEN_TTL_HOURS:-168}"
       USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
     depends_on:
       auth-db:

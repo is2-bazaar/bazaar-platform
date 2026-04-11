@@ -24,7 +24,7 @@ Contrato operativo esperado:
 ## Inputs esperados
 
 - repo `Bazaar-backend-api-gateway` disponible en `BAZAAR_API_GATEWAY_PATH`
-- repo `bazaar-backend-auth-service` disponible en `BAZAAR_AUTH_SERVICE_PATH`
+- repo `bazaar-backend-auth-service` disponible en `BAZAAR_AUTH_SERVICE_PATH` (debe incluir `.env` o `.env.local` para configuracion interna del servicio)
 - repo `bazaar-backend` disponible en `BAZAAR_BACKEND_PATH`
 - `LOCAL_API_BASE_URL`
 - `BACKEND_STACK`
