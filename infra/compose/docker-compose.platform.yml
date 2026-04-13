@@ -71,6 +71,7 @@ services:
       CATALOG_DB_PASSWORD: "${CATALOG_DB_PASSWORD:-postgres}"
       CATALOG_DB_NAME: "${CATALOG_DB_NAME:-catalog}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
     depends_on:
       catalog-db:
         condition: service_healthy
