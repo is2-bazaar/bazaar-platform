@@ -31,24 +31,25 @@ resolve_from_root() {
 platform_snapshot_env_vars() {
   local variable_name
 
-  unset PLATFORM_ENV_SNAPSHOT
-  declare -gA PLATFORM_ENV_SNAPSHOT=()
-
   for variable_name in "$@"; do
-    if [[ -v "$variable_name" ]]; then
-      PLATFORM_ENV_SNAPSHOT["$variable_name"]="${!variable_name}"
+    unset "PLATFORM_ENV_SNAPSHOT_$variable_name"
+
+    if [[ ${!variable_name+x} == x ]]; then
+      printf -v "PLATFORM_ENV_SNAPSHOT_$variable_name" '%s' "${!variable_name}"
     else
-      PLATFORM_ENV_SNAPSHOT["$variable_name"]="__PLATFORM_UNSET__"
+      printf -v "PLATFORM_ENV_SNAPSHOT_$variable_name" '%s' "__PLATFORM_UNSET__"
     fi
   done
 }
 
 platform_restore_env_overrides() {
   local variable_name
+  local snapshot_var
   local snapshot_value
 
   for variable_name in "$@"; do
-    snapshot_value="${PLATFORM_ENV_SNAPSHOT[$variable_name]:-__PLATFORM_UNSET__}"
+    snapshot_var="PLATFORM_ENV_SNAPSHOT_$variable_name"
+    snapshot_value="${!snapshot_var-__PLATFORM_UNSET__}"
 
     if [[ "$snapshot_value" != "__PLATFORM_UNSET__" ]]; then
       printf -v "$variable_name" '%s' "$snapshot_value"
