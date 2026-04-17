@@ -172,3 +172,13 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` es el dueño del compose local integrado del backend.
 - `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
+
+
+## Links a repositorios
+-`Bazaar-backend-api-gateway` https://github.com/joseslavkis/Bazaar-backend-api-gateway.git
+-`Bazaar-backend-auth-service` https://github.com/joseslavkis/bazaar-backend-auth-service.git
+-`Bazaar-backend-user-service` https://github.com/joseslavkis/bazaar-backend-user-service.git
+-`Bazaar-mobile` https://github.com/is2-bazaar/bazaar-mobile.git
+-`Bazaar-backoffice` https://github.com/joseslavkis/bazaar-backoffice.git
+-`Bazaar-platform` https://github.com/is2-bazaar/bazaar-platform.git
+-`Bazaar-backend-catalog-service` https://github.com/GuidoM197/bazaar-backend-catalog-service.git
