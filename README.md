@@ -13,6 +13,12 @@ Thin wrapper para correr Bazaar en desarrollo local sin duplicar infraestructura
 
 No resuelve cloud, no contiene logica de negocio y no es el owner de ningun deploy remoto. El deploy cloud queda para una etapa futura por repo separado.
 
+## Diseno y prototipos
+
+Los prototipos de `bazaar-mobile` y `bazaar-backoffice` estan disponibles en Figma:
+
+- https://www.figma.com/design/3BjGWVlygYArP2F0e91Hfy/Bazaar?node-id=94-198&t=npY0giDu8dAYQoKw-1
+
 ## Estructura
 
 ```text
