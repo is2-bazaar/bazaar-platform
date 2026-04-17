@@ -53,6 +53,36 @@ npm install
 
 Si necesitás overrides locales de paths o URLs, copiá `.env.local.example` como `.env.local` y ajustalo. En el caso feliz, los defaults asumen que todos los repos viven como hermanos.
 
+## Layout esperado del workspace
+
+Para que `bazaar-platform` pueda levantar el entorno local sin overrides, los repos tienen que vivir como directorios hermanos.
+
+Ejemplo:
+
+```text
+<workspace-root>/
+├── bazaar-platform/
+├── Bazaar-backend-api-gateway/
+├── bazaar-backend-auth-service/
+├── bazaar-backend-user-service/
+├── bazaar-backend-catalog-service/
+├── bazaar-backend/
+├── bazaar-backoffice/
+└── bazaar-mobile/
+```
+
+Ese layout coincide con los defaults de `defaults.env`:
+
+- `BAZAAR_BACKEND_PATH=../bazaar-backend`
+- `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
+- `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
+- `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
+- `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
+- `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
+- `BAZAAR_MOBILE_PATH=../bazaar-mobile`
+
+Si algun repo vive en otra ubicacion, definilo en `.env.local` para no tocar `defaults.env`.
+
 `bazaar-platform` deriva `GATEWAY_ALLOWED_ORIGINS` para el gateway a partir de `BACKOFFICE_DEV_URL`, `MOBILE_DEV_URL` y `PLATFORM_LAN_IP`.
 
 Cuando `platform` detecta una IP LAN valida, `up.sh` y `status.sh` imprimen tambien:
@@ -129,6 +159,8 @@ Atajos opcionales para levantar una sola unidad:
 
 - `Bazaar-backend-api-gateway` vive como repo hermano y es el source of truth del gateway.
 - `bazaar-backend-auth-service` vive como repo hermano y es el source of truth de `auth-service`.
+- `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
+- `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
 - `bazaar-backend` vive como repo hermano y aporta los microservicios que siguen dentro del monorepo.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
