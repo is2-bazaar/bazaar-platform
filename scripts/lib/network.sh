@@ -85,7 +85,7 @@ platform_url_port() {
 
 platform_host_is_loopback() {
   case "$1" in
-    localhost|127.0.0.1|0.0.0.0|::1|"[::1]"|::|"[::]")
+    localhost | 127.0.0.1 | 0.0.0.0 | ::1 | "[::1]" | :: | "[::]")
       return 0
       ;;
     *)

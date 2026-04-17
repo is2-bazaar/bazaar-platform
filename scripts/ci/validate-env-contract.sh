@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+assert_keys_present() {
+  local file="$1"
+  shift
+
+  local key
+  for key in "$@"; do
+    if ! grep -Eq "^#?[[:space:]]*${key}=" "$file"; then
+      echo "missing key '$key' in $file" >&2
+      exit 1
+    fi
+  done
+}
+
+assert_file_exists() {
+  local file="$1"
+  [[ -f "$file" ]] || {
+    echo "missing file: $file" >&2
+    exit 1
+  }
+}
+
+defaults_file="$REPO_ROOT/defaults.env"
+local_example_file="$REPO_ROOT/.env.local.example"
+staging_example_file="$REPO_ROOT/.env.staging.example"
+production_example_file="$REPO_ROOT/.env.production.example"
+
+assert_file_exists "$defaults_file"
+assert_file_exists "$local_example_file"
+assert_file_exists "$staging_example_file"
+assert_file_exists "$production_example_file"
+
+assert_keys_present "$defaults_file" \
+  ENV_NAME \
+  BAZAAR_BACKEND_PATH \
+  BAZAAR_API_GATEWAY_PATH \
+  BAZAAR_AUTH_SERVICE_PATH \
+  BAZAAR_CATALOG_SERVICE_PATH \
+  BAZAAR_USER_SERVICE_PATH \
+  BAZAAR_BACKOFFICE_PATH \
+  BAZAAR_MOBILE_PATH \
+  BACKEND_PROVIDER \
+  DATABASE_PROVIDER \
+  BACKOFFICE_PROVIDER \
+  MOBILE_RUNTIME_MODE \
+  BACKEND_STACK \
+  LOCAL_API_BASE_URL \
+  BACKOFFICE_DEV_URL \
+  MOBILE_API_BASE_URL \
+  MOBILE_DEV_URL \
+  GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS \
+  GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS \
+  GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS \
+  GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS \
+  GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS \
+  AUTH_LOGIN_RATE_LIMIT_WINDOW_MINUTES \
+  AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS \
+  AUTH_FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES \
+  AUTH_FORGOT_PASSWORD_RATE_LIMIT_MAX_REQUESTS \
+  AUTH_RESET_PASSWORD_RATE_LIMIT_WINDOW_MINUTES \
+  AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS \
+  USER_DB_HOST_PORT \
+  AUTH_DB_HOST_PORT \
+  CATALOG_DB_HOST_PORT \
+  INVENTORY_DB_HOST_PORT \
+  CART_DB_HOST_PORT \
+  ORDERS_DB_HOST_PORT \
+  PAYMENTS_DB_HOST_PORT \
+  NOTIFICATIONS_DB_HOST_PORT
+
+assert_keys_present "$local_example_file" \
+  ENV_NAME \
+  BAZAAR_BACKEND_PATH \
+  BAZAAR_API_GATEWAY_PATH \
+  BAZAAR_AUTH_SERVICE_PATH \
+  BAZAAR_CATALOG_SERVICE_PATH \
+  BAZAAR_USER_SERVICE_PATH \
+  BAZAAR_BACKOFFICE_PATH \
+  BAZAAR_MOBILE_PATH \
+  BACKEND_PROVIDER \
+  DATABASE_PROVIDER \
+  BACKOFFICE_PROVIDER \
+  MOBILE_RUNTIME_MODE \
+  LOCAL_API_BASE_URL \
+  BACKOFFICE_DEV_URL \
+  MOBILE_API_BASE_URL \
+  MOBILE_DEV_URL \
+  USER_DB_HOST_PORT \
+  AUTH_DB_HOST_PORT \
+  CATALOG_DB_HOST_PORT \
+  INVENTORY_DB_HOST_PORT \
+  CART_DB_HOST_PORT \
+  ORDERS_DB_HOST_PORT \
+  PAYMENTS_DB_HOST_PORT \
+  NOTIFICATIONS_DB_HOST_PORT \
+  PLATFORM_LAN_IP
+
+assert_keys_present "$staging_example_file" \
+  ENV_NAME \
+  BACKEND_PROVIDER \
+  DATABASE_PROVIDER \
+  BACKOFFICE_PROVIDER \
+  MOBILE_RUNTIME_MODE \
+  BACKEND_BASE_URL \
+  BACKOFFICE_BASE_URL \
+  MOBILE_API_BASE_URL
+
+assert_keys_present "$production_example_file" \
+  ENV_NAME \
+  BACKEND_PROVIDER \
+  DATABASE_PROVIDER \
+  BACKOFFICE_PROVIDER \
+  MOBILE_RUNTIME_MODE \
+  BACKEND_BASE_URL \
+  BACKOFFICE_BASE_URL \
+  MOBILE_API_BASE_URL
+
+echo "env contract ok"
