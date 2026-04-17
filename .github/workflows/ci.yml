@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck shfmt
+
+      - name: Bash syntax check
+        run: |
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find scripts -type f -name '*.sh' -print0)
+
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh scripts/lib/*.sh scripts/ci/*.sh
+
+      - name: Shell format check
+        run: shfmt -i 2 -ci -d scripts
+
+      - name: Validate env contracts
+        run: ./scripts/ci/validate-env-contract.sh
+
+      - name: Validate compose config
+        run: ./scripts/ci/validate-compose-config.sh

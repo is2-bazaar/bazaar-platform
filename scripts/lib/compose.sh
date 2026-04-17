@@ -13,6 +13,7 @@ platform_backend_select_stack() {
   case "${BACKEND_STACK:-full}" in
     full)
       PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,inventory,cart,orders,payments,notifications"
+      # shellcheck disable=SC2034
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
         auth-service
@@ -27,6 +28,7 @@ platform_backend_select_stack() {
       ;;
     auth)
       PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user"
+      # shellcheck disable=SC2034
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
         auth-service

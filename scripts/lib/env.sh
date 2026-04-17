@@ -100,7 +100,7 @@ load_platform_env() {
 
   platform_snapshot_env_vars "${snapshot_vars[@]}"
 
-  # shellcheck disable=SC1091
+  # shellcheck disable=SC1090,SC1091
   source "$defaults_file"
 
   if [[ -f "$PLATFORM_ROOT/.env.local" ]]; then
@@ -114,6 +114,7 @@ load_platform_env() {
     printf -v "$path_var" '%s' "$(resolve_from_root "$PLATFORM_ROOT" "${!path_var-}")"
   done
 
+  # shellcheck disable=SC2034
   PLATFORM_COMPOSE_FILE="$PLATFORM_ROOT/infra/compose/docker-compose.platform.yml"
 
   for url_var in LOCAL_API_BASE_URL BACKOFFICE_DEV_URL MOBILE_API_BASE_URL MOBILE_DEV_URL; do

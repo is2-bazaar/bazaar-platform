@@ -13,7 +13,7 @@ platform_wait_for_ready() {
 
   deadline=$((SECONDS + timeout_seconds))
 
-  while (( SECONDS < deadline )); do
+  while ((SECONDS < deadline)); do
     if platform_http_probe "$url"; then
       return 0
     fi
@@ -121,6 +121,6 @@ platform_run_mobile_script() {
   local script_name="$1"
 
   MOBILE_API_BASE_URL="$(platform_mobile_effective_api_base_url)" \
-    MOBILE_DEV_URL="$(platform_mobile_effective_dev_url)" \
+  MOBILE_DEV_URL="$(platform_mobile_effective_dev_url)" \
     bash "$BAZAAR_MOBILE_PATH/scripts/dev/$script_name"
 }
