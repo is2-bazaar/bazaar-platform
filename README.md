@@ -172,7 +172,3 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` es el dueño del compose local integrado del backend.
 - `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
-
-Los detalles del contrato y las decisiones postergadas están en [docs/local-runtime.md](./docs/local-runtime.md).
-
-La vista de ambientes, providers y consumo de API por cliente está en [docs/environments.md](./docs/environments.md).
