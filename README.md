@@ -9,9 +9,15 @@ Thin wrapper para correr Bazaar en desarrollo local sin duplicar infraestructura
 - el compose local integrado del backend
 - el backoffice como dev server local
 - el mobile como runtime local de Expo
-- la documentacion del contrato de entorno
+- la documentación del contrato de entorno
 
-No resuelve cloud, no contiene logica de negocio y no es el owner de ningun deploy remoto. El deploy cloud queda para una etapa futura por repo separado.
+No resuelve cloud, no contiene lógica de negocio y no es el owner de ningún deploy remoto. El deploy cloud queda para una etapa futura por repo separado.
+
+## Diseño y prototipos
+
+Los prototipos de `bazaar-mobile` y `bazaar-backoffice` están disponibles en Figma:
+
+- https://www.figma.com/design/3BjGWVlygYArP2F0e91Hfy/Bazaar?node-id=94-198&t=npY0giDu8dAYQoKw-1
 
 ## Estructura
 
@@ -53,15 +59,45 @@ npm install
 
 Si necesitás overrides locales de paths o URLs, copiá `.env.local.example` como `.env.local` y ajustalo. En el caso feliz, los defaults asumen que todos los repos viven como hermanos.
 
+## Layout esperado del workspace
+
+Para que `bazaar-platform` pueda levantar el entorno local sin overrides, los repos tienen que vivir como directorios hermanos.
+
+Ejemplo:
+
+```text
+<workspace-root>/
+├── bazaar-platform/
+├── Bazaar-backend-api-gateway/
+├── bazaar-backend-auth-service/
+├── bazaar-backend-user-service/
+├── bazaar-backend-catalog-service/
+├── bazaar-backend/
+├── bazaar-backoffice/
+└── bazaar-mobile/
+```
+
+Ese layout coincide con los defaults de `defaults.env`:
+
+- `BAZAAR_BACKEND_PATH=../bazaar-backend`
+- `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
+- `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
+- `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
+- `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
+- `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
+- `BAZAAR_MOBILE_PATH=../bazaar-mobile`
+
+Si algún repo vive en otra ubicación, definilo en `.env.local` para no tocar `defaults.env`.
+
 `bazaar-platform` deriva `GATEWAY_ALLOWED_ORIGINS` para el gateway a partir de `BACKOFFICE_DEV_URL`, `MOBILE_DEV_URL` y `PLATFORM_LAN_IP`.
 
-Cuando `platform` detecta una IP LAN valida, `up.sh` y `status.sh` imprimen tambien:
+Cuando `platform` detecta una IP LAN válida, `up.sh` y `status.sh` imprimen también:
 
-- la URL de API para el dispositivo fisico
+- la URL de API para el dispositivo físico
 - la probe HTTP de Metro
-- la URL `exp://...` que tenes que abrir con Expo Go
+- la URL `exp://...` que tenés que abrir con Expo Go
 
-`.env.staging.example` y `.env.production.example` son contratos documentales de ambientes futuros. No los usa ningun script local.
+`.env.staging.example` y `.env.production.example` son contratos documentales de ambientes futuros. No los usa ningún script local.
 
 Defaults operativos:
 
@@ -129,12 +165,14 @@ Atajos opcionales para levantar una sola unidad:
 
 - `Bazaar-backend-api-gateway` vive como repo hermano y es el source of truth del gateway.
 - `bazaar-backend-auth-service` vive como repo hermano y es el source of truth de `auth-service`.
+- `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
+- `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
 - `bazaar-backend` vive como repo hermano y aporta los microservicios que siguen dentro del monorepo.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` es el dueño del compose local integrado del backend.
-- `platform` es la unica fuente de verdad para la allowlist CORS local del gateway.
+- `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
 
-Los detalles del contrato y las decisiones postergadas estan en [docs/local-runtime.md](./docs/local-runtime.md).
+Los detalles del contrato y las decisiones postergadas están en [docs/local-runtime.md](./docs/local-runtime.md).
 
-La vista de ambientes, providers y consumo de API por cliente esta en [docs/environments.md](./docs/environments.md).
+La vista de ambientes, providers y consumo de API por cliente está en [docs/environments.md](./docs/environments.md).
