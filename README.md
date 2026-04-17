@@ -9,13 +9,13 @@ Thin wrapper para correr Bazaar en desarrollo local sin duplicar infraestructura
 - el compose local integrado del backend
 - el backoffice como dev server local
 - el mobile como runtime local de Expo
-- la documentacion del contrato de entorno
+- la documentación del contrato de entorno
 
-No resuelve cloud, no contiene logica de negocio y no es el owner de ningun deploy remoto. El deploy cloud queda para una etapa futura por repo separado.
+No resuelve cloud, no contiene lógica de negocio y no es el owner de ningún deploy remoto. El deploy cloud queda para una etapa futura por repo separado.
 
-## Diseno y prototipos
+## Diseño y prototipos
 
-Los prototipos de `bazaar-mobile` y `bazaar-backoffice` estan disponibles en Figma:
+Los prototipos de `bazaar-mobile` y `bazaar-backoffice` están disponibles en Figma:
 
 - https://www.figma.com/design/3BjGWVlygYArP2F0e91Hfy/Bazaar?node-id=94-198&t=npY0giDu8dAYQoKw-1
 
@@ -87,17 +87,17 @@ Ese layout coincide con los defaults de `defaults.env`:
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
 
-Si algun repo vive en otra ubicacion, definilo en `.env.local` para no tocar `defaults.env`.
+Si algún repo vive en otra ubicación, definilo en `.env.local` para no tocar `defaults.env`.
 
 `bazaar-platform` deriva `GATEWAY_ALLOWED_ORIGINS` para el gateway a partir de `BACKOFFICE_DEV_URL`, `MOBILE_DEV_URL` y `PLATFORM_LAN_IP`.
 
-Cuando `platform` detecta una IP LAN valida, `up.sh` y `status.sh` imprimen tambien:
+Cuando `platform` detecta una IP LAN válida, `up.sh` y `status.sh` imprimen también:
 
-- la URL de API para el dispositivo fisico
+- la URL de API para el dispositivo físico
 - la probe HTTP de Metro
-- la URL `exp://...` que tenes que abrir con Expo Go
+- la URL `exp://...` que tenés que abrir con Expo Go
 
-`.env.staging.example` y `.env.production.example` son contratos documentales de ambientes futuros. No los usa ningun script local.
+`.env.staging.example` y `.env.production.example` son contratos documentales de ambientes futuros. No los usa ningún script local.
 
 Defaults operativos:
 
@@ -171,8 +171,8 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` es el dueño del compose local integrado del backend.
-- `platform` es la unica fuente de verdad para la allowlist CORS local del gateway.
+- `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
 
-Los detalles del contrato y las decisiones postergadas estan en [docs/local-runtime.md](./docs/local-runtime.md).
+Los detalles del contrato y las decisiones postergadas están en [docs/local-runtime.md](./docs/local-runtime.md).
 
-La vista de ambientes, providers y consumo de API por cliente esta en [docs/environments.md](./docs/environments.md).
+La vista de ambientes, providers y consumo de API por cliente está en [docs/environments.md](./docs/environments.md).
