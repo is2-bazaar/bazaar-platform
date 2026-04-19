@@ -187,4 +187,4 @@ Atajos opcionales para levantar una sola unidad:
 
 -`Bazaar-platform` https://github.com/is2-bazaar/bazaar-platform.git
 
--`Bazaar-backend-catalog-service` https://github.com/is2-bazaar/bazaar-backend-catalog-service.git
+-`Bazaar-backend-catalog-service` https://github.com/Guidom197/bazaar-backend-catalog-service.git
