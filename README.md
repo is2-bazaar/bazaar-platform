@@ -175,16 +175,16 @@ Atajos opcionales para levantar una sola unidad:
 
 
 ## Links a repositorios
--`Bazaar-backend-api-gateway` https://github.com/joseslavkis/Bazaar-backend-api-gateway.git
+-`Bazaar-backend-api-gateway` https://github.com/is2-bazaar/Bazaar-backend-api-gateway.git
 
--`Bazaar-backend-auth-service` https://github.com/joseslavkis/bazaar-backend-auth-service.git
+-`Bazaar-backend-auth-service` https://github.com/is2-bazaar/bazaar-backend-auth-service.git
 
--`Bazaar-backend-user-service` https://github.com/joseslavkis/bazaar-backend-user-service.git
+-`Bazaar-backend-user-service` https://github.com/is2-bazaar/bazaar-backend-user-service.git
 
 -`Bazaar-mobile` https://github.com/is2-bazaar/bazaar-mobile.git
 
--`Bazaar-backoffice` https://github.com/joseslavkis/bazaar-backoffice.git
+-`Bazaar-backoffice` https://github.com/is2-bazaar/bazaar-backoffice.git
 
 -`Bazaar-platform` https://github.com/is2-bazaar/bazaar-platform.git
 
--`Bazaar-backend-catalog-service` https://github.com/GuidoM197/bazaar-backend-catalog-service.git
+-`Bazaar-backend-catalog-service` https://github.com/is2-bazaar/bazaar-backend-catalog-service.git
