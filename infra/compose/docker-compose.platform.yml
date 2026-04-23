@@ -71,8 +71,8 @@ services:
 
   catalog-service:
     build:
-      context: ../../..
-      dockerfile: bazaar-backend-catalog-service/Dockerfile
+      context: ../../../bazaar-backend-catalog-service
+      dockerfile: Dockerfile
     environment:
       SERVICE_NAME: "catalog-service"
       PORT: "${CATALOG_SERVICE_PORT:-8080}"
