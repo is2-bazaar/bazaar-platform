@@ -31,7 +31,7 @@ services:
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       INVENTORY_SERVICE_URL: "${INVENTORY_SERVICE_URL:-http://inventory-service:${INVENTORY_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
-      ORDERS_SERVICE_URL: "${ORDERS_SERVICE_URL:-http://orders-service:${ORDERS_SERVICE_PORT:-8080}}"
+      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payments-service:${PAYMENTS_SERVICE_PORT:-8080}}"
       NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
@@ -115,8 +115,8 @@ services:
       <<: *backend-build
       dockerfile: services/orders-service/Dockerfile
     environment:
-      PORT: "${ORDERS_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${ORDERS_SERVICE_DEPENDENCY_TARGETS:-orders-db:5432,payments-service:${PAYMENTS_SERVICE_PORT:-8080},inventory-service:${INVENTORY_SERVICE_PORT:-8080},notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
+      PORT: "${ORDER_SERVICE_PORT:-8080}"
+      DEPENDENCY_TARGETS: "${ORDER_SERVICE_DEPENDENCY_TARGETS:-orders-db:5432,payments-service:${PAYMENTS_SERVICE_PORT:-8080},inventory-service:${INVENTORY_SERVICE_PORT:-8080},notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
     depends_on:
       orders-db:
         condition: service_healthy
@@ -245,16 +245,16 @@ services:
   orders-db:
     <<: *postgres-db
     environment:
-      POSTGRES_DB: "${ORDERS_DB_NAME:-orders}"
-      POSTGRES_USER: "${ORDERS_DB_USER:-postgres}"
-      POSTGRES_PASSWORD: "${ORDERS_DB_PASSWORD:-postgres}"
+      POSTGRES_DB: "${ORDER_DB_NAME:-orders}"
+      POSTGRES_USER: "${ORDER_DB_USER:-postgres}"
+      POSTGRES_PASSWORD: "${ORDER_DB_PASSWORD:-postgres}"
     ports:
-      - "${ORDERS_DB_HOST_PORT:-5437}:5432"
+      - "${ORDER_DB_HOST_PORT:-5437}:5432"
     volumes:
       - orders-db-data:/var/lib/postgresql/data
     healthcheck:
       <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ${ORDERS_DB_USER:-postgres} -d ${ORDERS_DB_NAME:-orders}"]
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_DB_USER:-postgres} -d ${ORDER_DB_NAME:-orders}"]
 
   payments-db:
     <<: *postgres-db
