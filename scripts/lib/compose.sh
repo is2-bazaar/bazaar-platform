@@ -12,18 +12,15 @@ platform_backend_allowed_origins() {
 platform_backend_select_stack() {
   case "${BACKEND_STACK:-full}" in
     full)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,inventory,cart,orders,payments,notifications"
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders"
       # shellcheck disable=SC2034
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
         auth-service
         user-service
         catalog-service
-        inventory-service
         cart-service
         orders-service
-        payments-service
-        notifications-service
       )
       ;;
     auth)
@@ -90,10 +87,11 @@ platform_compose() {
     platform_warn "JWT_SECRET no definido en entorno ni en $BAZAAR_AUTH_SERVICE_PATH/.env(.local); se usara fallback de desarrollo"
   fi
 
-  BAZAAR_BACKEND_PATH="$BAZAAR_BACKEND_PATH" \
-    BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
+  BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
     BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH" \
+    BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH" \
     BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
+    BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
     BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
     JWT_SECRET="$resolved_jwt_secret" \
     GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \

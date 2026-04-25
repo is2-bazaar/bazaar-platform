@@ -14,10 +14,10 @@ trap cleanup EXIT
 create_stub_repo() {
   local dir="$1"
   mkdir -p "$dir"
-  cat >"$dir/Dockerfile" <<'EOF'
+  cat >"$dir/Dockerfile" <<'DOCKERFILE'
 FROM alpine:3.20
 CMD ["true"]
-EOF
+DOCKERFILE
 }
 
 create_stub_runtime_repo() {
@@ -25,31 +25,20 @@ create_stub_runtime_repo() {
   mkdir -p "$dir/scripts/dev"
   local script_name
   for script_name in up down status; do
-    cat >"$dir/scripts/dev/${script_name}.sh" <<'EOF'
+    cat >"$dir/scripts/dev/${script_name}.sh" <<'SCRIPT'
 #!/usr/bin/env bash
 exit 0
-EOF
+SCRIPT
     chmod +x "$dir/scripts/dev/${script_name}.sh"
   done
 }
 
 create_stub_repo "$TMP_ROOT/Bazaar-backend-api-gateway"
 create_stub_repo "$TMP_ROOT/bazaar-backend-auth-service"
-create_stub_repo "$TMP_ROOT/bazaar-backend-user-service"
+create_stub_repo "$TMP_ROOT/bazaar-backend-cart-service"
 create_stub_repo "$TMP_ROOT/bazaar-backend-catalog-service"
-
-mkdir -p \
-  "$TMP_ROOT/bazaar-backend/services/inventory-service" \
-  "$TMP_ROOT/bazaar-backend/services/cart-service" \
-  "$TMP_ROOT/bazaar-backend/services/orders-service" \
-  "$TMP_ROOT/bazaar-backend/services/payments-service" \
-  "$TMP_ROOT/bazaar-backend/services/notifications-service"
-
-create_stub_repo "$TMP_ROOT/bazaar-backend/services/inventory-service"
-create_stub_repo "$TMP_ROOT/bazaar-backend/services/cart-service"
-create_stub_repo "$TMP_ROOT/bazaar-backend/services/orders-service"
-create_stub_repo "$TMP_ROOT/bazaar-backend/services/payments-service"
-create_stub_repo "$TMP_ROOT/bazaar-backend/services/notifications-service"
+create_stub_repo "$TMP_ROOT/bazaar-backend-order-service"
+create_stub_repo "$TMP_ROOT/bazaar-backend-user-service"
 
 create_stub_runtime_repo "$TMP_ROOT/bazaar-backoffice"
 create_stub_runtime_repo "$TMP_ROOT/bazaar-mobile"
@@ -61,10 +50,11 @@ mkdir -p "$TMP_ROOT/bazaar-backoffice/node_modules" "$TMP_ROOT/bazaar-mobile/nod
 cd "$REPO_ROOT"
 
 env \
-  BAZAAR_BACKEND_PATH="$TMP_ROOT/bazaar-backend" \
   BAZAAR_API_GATEWAY_PATH="$TMP_ROOT/Bazaar-backend-api-gateway" \
   BAZAAR_AUTH_SERVICE_PATH="$TMP_ROOT/bazaar-backend-auth-service" \
+  BAZAAR_CART_SERVICE_PATH="$TMP_ROOT/bazaar-backend-cart-service" \
   BAZAAR_CATALOG_SERVICE_PATH="$TMP_ROOT/bazaar-backend-catalog-service" \
+  BAZAAR_ORDER_SERVICE_PATH="$TMP_ROOT/bazaar-backend-order-service" \
   BAZAAR_USER_SERVICE_PATH="$TMP_ROOT/bazaar-backend-user-service" \
   BAZAAR_BACKOFFICE_PATH="$TMP_ROOT/bazaar-backoffice" \
   BAZAAR_MOBILE_PATH="$TMP_ROOT/bazaar-mobile" \

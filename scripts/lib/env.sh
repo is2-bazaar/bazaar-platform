@@ -71,10 +71,11 @@ platform_require_repo_script() {
 load_platform_env() {
   local snapshot_vars=(
     ENV_NAME
-    BAZAAR_BACKEND_PATH
     BAZAAR_API_GATEWAY_PATH
     BAZAAR_AUTH_SERVICE_PATH
+    BAZAAR_CART_SERVICE_PATH
     BAZAAR_CATALOG_SERVICE_PATH
+    BAZAAR_ORDER_SERVICE_PATH
     BAZAAR_USER_SERVICE_PATH
     BAZAAR_BACKOFFICE_PATH
     BAZAAR_MOBILE_PATH
@@ -110,7 +111,7 @@ load_platform_env() {
 
   platform_restore_env_overrides "${snapshot_vars[@]}"
 
-  for path_var in BAZAAR_BACKEND_PATH BAZAAR_API_GATEWAY_PATH BAZAAR_AUTH_SERVICE_PATH BAZAAR_CATALOG_SERVICE_PATH BAZAAR_USER_SERVICE_PATH BAZAAR_BACKOFFICE_PATH BAZAAR_MOBILE_PATH; do
+  for path_var in BAZAAR_API_GATEWAY_PATH BAZAAR_AUTH_SERVICE_PATH BAZAAR_CART_SERVICE_PATH BAZAAR_CATALOG_SERVICE_PATH BAZAAR_ORDER_SERVICE_PATH BAZAAR_USER_SERVICE_PATH BAZAAR_BACKOFFICE_PATH BAZAAR_MOBILE_PATH; do
     printf -v "$path_var" '%s' "$(resolve_from_root "$PLATFORM_ROOT" "${!path_var-}")"
   done
 
@@ -122,10 +123,11 @@ load_platform_env() {
     printf -v "$url_var" '%s' "${url_value%/}"
   done
 
-  require_env BAZAAR_BACKEND_PATH
   require_env BAZAAR_API_GATEWAY_PATH
   require_env BAZAAR_AUTH_SERVICE_PATH
+  require_env BAZAAR_CART_SERVICE_PATH
   require_env BAZAAR_CATALOG_SERVICE_PATH
+  require_env BAZAAR_ORDER_SERVICE_PATH
   require_env BAZAAR_USER_SERVICE_PATH
   require_env BAZAAR_BACKOFFICE_PATH
   require_env BAZAAR_MOBILE_PATH

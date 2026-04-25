@@ -8,8 +8,12 @@ source "$SCRIPT_DIR/common.sh"
 load_platform_env
 platform_backend_select_stack
 
-platform_info "backend path: $BAZAAR_BACKEND_PATH"
 platform_info "api gateway path: $BAZAAR_API_GATEWAY_PATH"
+platform_info "auth service path: $BAZAAR_AUTH_SERVICE_PATH"
+platform_info "cart service path: $BAZAAR_CART_SERVICE_PATH"
+platform_info "catalog service path: $BAZAAR_CATALOG_SERVICE_PATH"
+platform_info "order service path: $BAZAAR_ORDER_SERVICE_PATH"
+platform_info "user service path: $BAZAAR_USER_SERVICE_PATH"
 platform_info "backoffice path: $BAZAAR_BACKOFFICE_PATH"
 platform_info "mobile path: $BAZAAR_MOBILE_PATH"
 platform_info "compose file: $PLATFORM_COMPOSE_FILE"
