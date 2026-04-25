@@ -1,20 +1,22 @@
-workspace "Bazaar Context" "Vista de contexto acotada al estado actual del codigo" {
+workspace "Bazaar Context" "Vista de contexto alineada al estado actual del sistema" {
 
     model {
-        user = person "Usuario" "Usa la app mobile para registrarse, iniciar sesion y recuperar password."
-        admin = person "Administrador" "Usa el backoffice para iniciar sesion administrativa."
+        user = person "Usuario" "Usa la app mobile para autenticarse, navegar el catalogo y gestionar su carrito."
+        admin = person "Administrador" "Usa el backoffice web para autenticarse y tareas administrativas."
 
-        brevo = softwareSystem "Brevo" "Proveedor externo de email para recupero de password." {
+        brevo = softwareSystem "Brevo" "Proveedor externo de email para envio de emails transaccionales (recupero de password)." {
             tags "External"
         }
 
-        bazaar = softwareSystem "Bazaar" "Marketplace con app mobile, backoffice y backend expuesto mediante API Gateway." {
+        bazaar = softwareSystem "Bazaar" "Marketplace mobile-first con backend basado en microservicios y API Gateway como punto unico de entrada." {
             tags "Core"
         }
 
-        user -> bazaar "Usa la app mobile para autenticarse y navegar la plataforma"
-        admin -> bazaar "Usa el backoffice para autenticarse como administrador"
-        bazaar -> brevo "Envia emails de recupero de password"
+        user -> bazaar "Usa la app mobile para autenticarse, explorar productos y gestionar su carrito"
+        admin -> bazaar "Usa el backoffice web para login administrativo"
+
+        bazaar -> brevo "Solicita envio de emails de recupero de password"
+        brevo -> user "Entrega email de recupero de password"
     }
 
     views {

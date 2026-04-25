@@ -1,7 +1,7 @@
-workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual del codigo" {
+workspace "Bazaar Containers" "Vista de contenedores alineada al estado actual del codigo (auth + user + catalog + cart)" {
 
     model {
-        user = person "Usuario" "Usa la app mobile para registrarse, iniciar sesion y recuperar password."
+        user = person "Usuario" "Usa la app mobile para registrarse, iniciar sesion, navegar catalogo y gestionar su carrito."
         admin = person "Administrador" "Usa el backoffice para iniciar sesion administrativa."
 
         brevo = softwareSystem "Brevo" "Proveedor externo de email para recupero de password." {
@@ -10,19 +10,19 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
 
         bazaar = softwareSystem "Bazaar" "Marketplace Bazaar" {
 
-            mobile = container "App Mobile" "App React Native. Hoy integra auth real contra el gateway; el resto de flujos esta parcial o mockeado." "React Native + Expo" {
+            mobile = container "App Mobile" "App React Native. Integra auth real contra gateway, consumo de catalogo y gestion de carrito." "React Native + Expo" {
                 tags "Mobile"
             }
 
-            backoffice = container "Backoffice Web" "Backoffice React. Hoy tiene login y refresh reales contra el gateway; las vistas operativas de admin siguen mockeadas." "React + Vite" {
+            backoffice = container "Backoffice Web" "Backoffice React. Login y refresh reales; vistas operativas aun mockeadas." "React + Vite" {
                 tags "WebApp"
             }
 
-            gateway = container "API Gateway" "Punto unico de entrada. Hace routing, validacion de JWT, CORS y rate limiting de borde." "Go" {
+            gateway = container "API Gateway" "Punto unico de entrada. Hace routing, validacion de JWT emitidos por auth-service, CORS y rate limiting de borde." "Go" {
                 tags "Gateway"
             }
 
-            authService = container "Auth Service" "Registro, login, refresh, change-password, forgot-password y reset-password." "Go" {
+            authService = container "Auth Service" "Registro, login, refresh, change-password, forgot-password y reset-password. Emite JWT." "Go" {
                 tags "Service"
             }
 
@@ -30,44 +30,58 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
                 tags "Service"
             }
 
-            catalogService = container "Catalog Service" "Listado, detalle de productos y publicaciones del vendedor." "Go" {
+            catalogService = container "Catalog Service" "Listado y detalle de productos consumidos por mobile. Publicaciones de vendedor parcialmente disponibles." "Go" {
                 tags "Service"
             }
 
-            authDb = container "Auth DB" "Cuentas, credenciales, refresh tokens y codigos de recupero." "PostgreSQL" {
+            cartService = container "Cart Service" "Gestion de carrito persistente: agregar items, actualizar cantidades y eliminar productos." "Go" {
+                tags "Service"
+            }
+
+            authDb = container "Auth DB" "Cuentas, credenciales, refresh tokens y codigos de recupero. Source of truth de autenticacion." "PostgreSQL" {
                 tags "Database"
             }
 
-            userDb = container "User DB" "Perfiles y datos propios del dominio de usuarios." "PostgreSQL" {
+            userDb = container "User DB" "Perfiles y datos del dominio de usuario. Source of truth de identidad de negocio." "PostgreSQL" {
                 tags "Database"
             }
 
-            catalogDb = container "Catalog DB" "Productos, categorias y metadata de media." "PostgreSQL" {
+            catalogDb = container "Catalog DB" "Productos, categorias y metadata. Source of truth de catalogo." "PostgreSQL" {
+                tags "Database"
+            }
+
+            cartDb = container "Cart DB" "Carritos e items por usuario. Source of truth del carrito." "PostgreSQL" {
                 tags "Database"
             }
         }
 
-        user -> mobile "Usa registro, login y recupero de password"
+        user -> mobile "Usa registro, login, catalogo y carrito"
         admin -> backoffice "Hace login administrativo"
 
-        mobile -> gateway "Consume /auth/*" "HTTPS/JSON"
+        user -> brevo "Recibe email de recupero de password"
+
+        mobile -> gateway "Consume /auth/*, /catalog/*, /cart/*" "HTTPS/JSON"
         backoffice -> gateway "Consume /api/auth/login y /api/auth/refresh" "HTTPS/JSON"
 
-        gateway -> authService "Proxy de /auth/*; aplica rate limiting por IP en endpoints sensibles" "HTTP/JSON"
+        gateway -> authService "Proxy de /auth/*; aplica rate limiting en endpoints sensibles" "HTTP/JSON"
         gateway -> userService "Publica /users/*, /profiles/* y /admin/users/*" "HTTP/JSON"
         gateway -> catalogService "Publica /catalog/*" "HTTP/JSON"
+        gateway -> cartService "Publica /cart/*" "HTTP/JSON"
 
         authService -> authDb "Lee y escribe"
         authService -> brevo "Envia emails de recupero" "HTTPS/API"
 
         userService -> userDb "Lee y escribe"
-        userService -> authService "Consulta o actualiza estado de cuenta" "HTTP/JSON"
+        userService -> authService "Consulta/valida estado de cuenta cuando es necesario" "HTTP/JSON"
 
         catalogService -> catalogDb "Lee y escribe"
+
+        cartService -> cartDb "Lee y escribe"
+        cartService -> catalogService "Consulta informacion de producto para validaciones" "HTTP/JSON"
     }
 
     views {
-        container bazaar "bazaar-container-view" "Contenedores reales del codigo actual" {
+        container bazaar "bazaar-container-view" "Contenedores reales del estado actual del sistema" {
             include *
             autolayout lr
         }
