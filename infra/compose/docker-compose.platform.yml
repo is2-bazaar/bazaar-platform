@@ -1,8 +1,5 @@
 name: bazaar-platform
 
-x-backend-build: &backend-build
-  context: ${BAZAAR_BACKEND_PATH}
-
 x-postgres-db: &postgres-db
   image: postgres:17-alpine
 
@@ -19,7 +16,7 @@ services:
     environment:
       PORT: "${API_GATEWAY_PORT:-8080}"
       SERVICE_NAME: "${API_GATEWAY_SERVICE_NAME:-api-gateway}"
-      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,inventory,cart,orders,payments,notifications}"
+      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders}"
       GATEWAY_ALLOWED_ORIGINS: "${GATEWAY_ALLOWED_ORIGINS:-}"
       GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}"
       GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS:-5}"
@@ -29,12 +26,9 @@ services:
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
       USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
-      INVENTORY_SERVICE_URL: "${INVENTORY_SERVICE_URL:-http://inventory-service:${INVENTORY_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
       ORDERS_SERVICE_URL: "${ORDERS_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
-      PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payments-service:${PAYMENTS_SERVICE_PORT:-8080}}"
-      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     ports:
       - "${API_GATEWAY_PORT:-8080}:8080"
@@ -72,7 +66,7 @@ services:
 
   catalog-service:
     build:
-      context: ../../../bazaar-backend-catalog-service
+      context: ${BAZAAR_CATALOG_SERVICE_PATH}
       dockerfile: Dockerfile
     environment:
       SERVICE_NAME: "catalog-service"
@@ -89,43 +83,59 @@ services:
       catalog-db:
         condition: service_healthy
 
-  inventory-service:
-    build:
-      <<: *backend-build
-      dockerfile: services/inventory-service/Dockerfile
-    environment:
-      PORT: "${INVENTORY_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${INVENTORY_SERVICE_DEPENDENCY_TARGETS:-inventory-db:5432}"
-    depends_on:
-      inventory-db:
-        condition: service_healthy
-
   cart-service:
     build:
-      <<: *backend-build
-      dockerfile: services/cart-service/Dockerfile
+      context: ${BAZAAR_CART_SERVICE_PATH}
+      dockerfile: Dockerfile
+    env_file:
+      - path: ${BAZAAR_CART_SERVICE_PATH}/.env
+        required: false
+      - path: ${BAZAAR_CART_SERVICE_PATH}/.env.local
+        required: false
     environment:
+      SERVICE_NAME: "cart-service"
       PORT: "${CART_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-cart-db:5432}"
+      DB_HOST: "${CART_DB_HOST:-cart-db}"
+      DB_PORT: "${CART_DB_PORT:-5432}"
+      DB_USER: "${CART_DB_USER:-postgres}"
+      DB_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
+      DB_NAME: "${CART_DB_NAME:-cart}"
+      DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     depends_on:
       cart-db:
         condition: service_healthy
 
   orders-service:
     build:
-      <<: *backend-build
-      dockerfile: services/orders-service/Dockerfile
+      context: ${BAZAAR_ORDER_SERVICE_PATH}
+      dockerfile: Dockerfile
+    env_file:
+      - path: ${BAZAAR_ORDER_SERVICE_PATH}/.env
+        required: false
+      - path: ${BAZAAR_ORDER_SERVICE_PATH}/.env.local
+        required: false
     environment:
+      SERVICE_NAME: "order-service"
       PORT: "${ORDER_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${ORDER_SERVICE_DEPENDENCY_TARGETS:-orders-db:5432,payments-service:${PAYMENTS_SERVICE_PORT:-8080},inventory-service:${INVENTORY_SERVICE_PORT:-8080},notifications-service:${NOTIFICATIONS_SERVICE_PORT:-8080}}"
+      ORDER_DB_HOST: "${ORDER_DB_HOST:-orders-db}"
+      ORDER_DB_PORT: "${ORDER_DB_PORT:-5432}"
+      ORDER_DB_USER: "${ORDER_DB_USER:-postgres}"
+      ORDER_DB_PASSWORD: "${ORDER_DB_PASSWORD:-postgres}"
+      ORDER_DB_NAME: "${ORDER_DB_NAME:-orders}"
+      ORDER_DB_DRIVER: "${ORDER_DB_DRIVER:-postgres}"
+      ORDER_DB_SSLMODE: "${ORDER_DB_SSLMODE:-disable}"
+      ORDER_DB_CHANNEL_BINDING: "${ORDER_DB_CHANNEL_BINDING:-}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
+      PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payments-service:${PAYMENTS_SERVICE_PORT:-8080}}"
     depends_on:
       orders-db:
         condition: service_healthy
-      payments-service:
+      catalog-service:
         condition: service_started
-      inventory-service:
-        condition: service_started
-      notifications-service:
+      cart-service:
         condition: service_started
 
   user-service:
@@ -149,28 +159,6 @@ services:
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
     depends_on:
       user-db:
-        condition: service_healthy
-
-  payments-service:
-    build:
-      <<: *backend-build
-      dockerfile: services/payments-service/Dockerfile
-    environment:
-      PORT: "${PAYMENTS_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${PAYMENTS_SERVICE_DEPENDENCY_TARGETS:-payments-db:5432}"
-    depends_on:
-      payments-db:
-        condition: service_healthy
-
-  notifications-service:
-    build:
-      <<: *backend-build
-      dockerfile: services/notifications-service/Dockerfile
-    environment:
-      PORT: "${NOTIFICATIONS_SERVICE_PORT:-8080}"
-      DEPENDENCY_TARGETS: "${NOTIFICATIONS_SERVICE_DEPENDENCY_TARGETS:-notifications-db:5432}"
-    depends_on:
-      notifications-db:
         condition: service_healthy
 
   user-db:
@@ -215,20 +203,6 @@ services:
       <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${CATALOG_DB_USER:-postgres} -d ${CATALOG_DB_NAME:-catalog}"]
 
-  inventory-db:
-    <<: *postgres-db
-    environment:
-      POSTGRES_DB: "${INVENTORY_DB_NAME:-inventory}"
-      POSTGRES_USER: "${INVENTORY_DB_USER:-postgres}"
-      POSTGRES_PASSWORD: "${INVENTORY_DB_PASSWORD:-postgres}"
-    ports:
-      - "${INVENTORY_DB_HOST_PORT:-5435}:5432"
-    volumes:
-      - inventory-db-data:/var/lib/postgresql/data
-    healthcheck:
-      <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ${INVENTORY_DB_USER:-postgres} -d ${INVENTORY_DB_NAME:-inventory}"]
-
   cart-db:
     <<: *postgres-db
     environment:
@@ -257,40 +231,9 @@ services:
       <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${ORDER_DB_USER:-postgres} -d ${ORDER_DB_NAME:-orders}"]
 
-  payments-db:
-    <<: *postgres-db
-    environment:
-      POSTGRES_DB: "${PAYMENTS_DB_NAME:-payments}"
-      POSTGRES_USER: "${PAYMENTS_DB_USER:-postgres}"
-      POSTGRES_PASSWORD: "${PAYMENTS_DB_PASSWORD:-postgres}"
-    ports:
-      - "${PAYMENTS_DB_HOST_PORT:-5438}:5432"
-    volumes:
-      - payments-db-data:/var/lib/postgresql/data
-    healthcheck:
-      <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ${PAYMENTS_DB_USER:-postgres} -d ${PAYMENTS_DB_NAME:-payments}"]
-
-  notifications-db:
-    <<: *postgres-db
-    environment:
-      POSTGRES_DB: "${NOTIFICATIONS_DB_NAME:-notifications}"
-      POSTGRES_USER: "${NOTIFICATIONS_DB_USER:-postgres}"
-      POSTGRES_PASSWORD: "${NOTIFICATIONS_DB_PASSWORD:-postgres}"
-    ports:
-      - "${NOTIFICATIONS_DB_HOST_PORT:-5439}:5432"
-    volumes:
-      - notifications-db-data:/var/lib/postgresql/data
-    healthcheck:
-      <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ${NOTIFICATIONS_DB_USER:-postgres} -d ${NOTIFICATIONS_DB_NAME:-notifications}"]
-
 volumes:
   user-db-data:
   auth-db-data:
   catalog-db-data:
-  inventory-db-data:
   cart-db-data:
   orders-db-data:
-  payments-db-data:
-  notifications-db-data:

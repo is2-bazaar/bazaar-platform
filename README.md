@@ -70,19 +70,21 @@ Ejemplo:
 ├── bazaar-platform/
 ├── Bazaar-backend-api-gateway/
 ├── bazaar-backend-auth-service/
-├── bazaar-backend-user-service/
+├── bazaar-backend-cart-service/
 ├── bazaar-backend-catalog-service/
-├── bazaar-backend/
+├── bazaar-backend-order-service/
+├── bazaar-backend-user-service/
 ├── bazaar-backoffice/
 └── bazaar-mobile/
 ```
 
 Ese layout coincide con los defaults de `defaults.env`:
 
-- `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
 - `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
+- `BAZAAR_CART_SERVICE_PATH=../bazaar-backend-cart-service`
 - `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
+- `BAZAAR_ORDER_SERVICE_PATH=../bazaar-backend-order-service`
 - `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
@@ -102,9 +104,11 @@ Cuando `platform` detecta una IP LAN válida, `up.sh` y `status.sh` imprimen tam
 Defaults operativos:
 
 - `ENV_NAME=local`
-- `BAZAAR_BACKEND_PATH=../bazaar-backend`
 - `BAZAAR_API_GATEWAY_PATH=../Bazaar-backend-api-gateway`
 - `BAZAAR_AUTH_SERVICE_PATH=../bazaar-backend-auth-service`
+- `BAZAAR_CART_SERVICE_PATH=../bazaar-backend-cart-service`
+- `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
+- `BAZAAR_ORDER_SERVICE_PATH=../bazaar-backend-order-service`
 - `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
@@ -165,9 +169,11 @@ Atajos opcionales para levantar una sola unidad:
 
 - `Bazaar-backend-api-gateway` vive como repo hermano y es el source of truth del gateway.
 - `bazaar-backend-auth-service` vive como repo hermano y es el source of truth de `auth-service`.
+- `bazaar-backend-cart-service` vive como repo hermano y es el source of truth de `cart-service`.
 - `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
+- `bazaar-backend-order-service` vive como repo hermano y es el source of truth de `orders-service`.
 - `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
-- `bazaar-backend` vive como repo hermano y aporta los microservicios que siguen dentro del monorepo.
+- `bazaar-platform` levanta el backend local usando solamente los repos de servicios separados.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` es el dueño del compose local integrado del backend.
@@ -179,7 +185,11 @@ Atajos opcionales para levantar una sola unidad:
 
 -`Bazaar-backend-auth-service` https://github.com/is2-bazaar/bazaar-backend-auth-service.git
 
+-`Bazaar-backend-cart-service` https://github.com/is2-bazaar/bazaar-backend-cart-service.git
+
 -`Bazaar-backend-user-service` https://github.com/is2-bazaar/bazaar-backend-user-service.git
+
+-`Bazaar-backend-order-service` https://github.com/is2-bazaar/bazaar-backend-order-service.git
 
 -`Bazaar-mobile` https://github.com/is2-bazaar/bazaar-mobile.git
 
