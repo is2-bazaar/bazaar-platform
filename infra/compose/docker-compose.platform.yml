@@ -100,6 +100,7 @@ services:
       CART_DB_USER: "${CART_DB_USER:-postgres}"
       CART_DB_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
       CART_DB_NAME: "${CART_DB_NAME:-cart}"
+      # cart-service currently reads DB_DRIVER; expose it from the platform-level CART_DB_DRIVER knob.
       DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     depends_on:
