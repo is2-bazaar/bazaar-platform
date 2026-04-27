@@ -25,6 +25,47 @@ Decisión tomada:
 
 Esta decisión se refleja también en el ADR sobre consumo de API desde frontends.
 
+### Decisión: alinear `sub` de JWT e IDs internos como `uint`
+
+Fecha: 27/04/2026
+
+Se detectó una inconsistencia entre servicios backend al consumir el claim `sub` del JWT:
+
+- `auth-service` trabaja con cuentas basadas en `gorm.Model`, por lo que el ID canónico de cuenta es `uint`
+- algunos servicios esperaban `sub` como UUID
+- otros esperaban número o string decimal
+- `cart-service` incluso mezclaba `uint` para `GET /cart` y UUID para operaciones de items
+
+Decisión tomada:
+
+- usar `uint` como ID canónico de usuario/cuenta/seller/producto mientras esos dominios sigan modelados con GORM
+- emitir `sub` en JWT como string decimal, por ejemplo `"8"`
+- mantener parsing tolerante para tokens legacy con `sub` numérico
+- rechazar `sub` con formato UUID en los endpoints que representan usuarios/cuentas GORM
+- mantener UUID solamente para entidades que ya son UUID reales del dominio, como órdenes y pagos
+
+Cambios aplicados:
+
+- `auth-service` emite `sub` con `strconv.FormatUint(uint64(user.ID), 10)` y tiene test que valida que el claim sea string
+- `cart-service` parsea `user_id` como `uint` en todos sus endpoints y conserva `Cart.UserID`, `ProductID` y `SellerID` como `uint`
+- `order-service` usa `uint` para `BuyerID`, `SellerID`, `ProductID` y `ChangedBy`, manteniendo UUID para `OrderID`, `PaymentID` y `CouponID`
+- el gateway mantiene compatibilidad al convertir `sub` numérico/string a string decimal y reenviar `X-User-ID`
+- `cart-service` en compose usa variables `CART_DB_*` para host, puerto, usuario, password y nombre de base; el driver se mantiene como `DB_DRIVER` porque es la clave que el servicio lee, tomando su valor desde `CART_DB_DRIVER`
+- el `.env` local de carrito debe apuntar a la base `cart`, no a `catalog_db`
+
+Verificación realizada:
+
+- `go test ./...` en `auth-service`
+- `go test ./...` en `cart-service`
+- `go test ./...` en `order-service`
+- validación de compose de `bazaar-platform`
+- prueba manual vía gateway: `GET /cart` responde `200` con `sub: "123"` y con `sub: 123`, y responde `401` con `sub` UUID
+
+Nota operativa:
+
+- si existe una base previa de `order-service` con columnas `buyer_id`, `seller_id`, `product_id` o `changed_by` como UUID, se requiere reset local o migración explícita antes de usar el nuevo contrato
+- para pruebas end-to-end, `auth-service` debe estar en la rama o commit que contiene el cambio `fix/user_id_as_string`, o tener ese cambio integrado
+
 ## Temas de discusión relevados
 
 ### 1. Monorepo vs repos separados
