@@ -124,3 +124,11 @@ platform_run_mobile_script() {
   MOBILE_DEV_URL="$(platform_mobile_effective_dev_url)" \
     bash "$BAZAAR_MOBILE_PATH/scripts/dev/$script_name"
 }
+
+platform_backoffice_dependencies_installed() {
+  [[ -d "$BAZAAR_BACKOFFICE_PATH/node_modules" ]]
+}
+
+platform_mobile_dependencies_installed() {
+  [[ -d "$BAZAAR_MOBILE_PATH/node_modules" ]]
+}

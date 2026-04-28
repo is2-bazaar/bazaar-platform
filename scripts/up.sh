@@ -22,10 +22,18 @@ if ! platform_wait_for_ready "$LOCAL_API_BASE_URL/readyz" 90; then
 fi
 
 platform_info "levantando backoffice desde su contrato local"
-platform_run_backoffice_script up.sh
+if platform_backoffice_dependencies_installed; then
+  platform_run_backoffice_script up.sh
+else
+  platform_warn "backoffice omitido: faltan dependencias en $BAZAAR_BACKOFFICE_PATH/node_modules"
+fi
 
 platform_info "levantando mobile desde su contrato local"
-platform_run_mobile_script up.sh
+if platform_mobile_dependencies_installed; then
+  platform_run_mobile_script up.sh
+else
+  platform_warn "mobile omitido: faltan dependencias en $BAZAAR_MOBILE_PATH/node_modules"
+fi
 
 platform_ok "stack local listo"
 platform_info "api base url: $LOCAL_API_BASE_URL"

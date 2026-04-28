@@ -46,5 +46,14 @@ else
   platform_warn "gateway no responde en $LOCAL_API_BASE_URL/readyz"
 fi
 
-platform_run_backoffice_script status.sh
-platform_run_mobile_script status.sh
+if platform_backoffice_dependencies_installed; then
+  platform_run_backoffice_script status.sh
+else
+  platform_warn "backoffice omitido en status: faltan dependencias en $BAZAAR_BACKOFFICE_PATH/node_modules"
+fi
+
+if platform_mobile_dependencies_installed; then
+  platform_run_mobile_script status.sh
+else
+  platform_warn "mobile omitido en status: faltan dependencias en $BAZAAR_MOBILE_PATH/node_modules"
+fi
