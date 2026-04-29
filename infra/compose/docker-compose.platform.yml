@@ -79,6 +79,7 @@ services:
       CATALOG_DB_NAME: "${CATALOG_DB_NAME:-catalog}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-e8bq/dQ9hCFL629mO280pLAlp8LNpquC}"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -104,6 +105,9 @@ services:
       # cart-service currently reads DB_DRIVER; expose it from the platform-level CART_DB_DRIVER knob.
       DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-e8bq/dQ9hCFL629mO280pLAlp8LNpquC}"
+      PRODUCT_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
     depends_on:
       cart-db:
         condition: service_healthy
