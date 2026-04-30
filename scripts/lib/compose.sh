@@ -77,23 +77,49 @@ platform_resolve_jwt_secret() {
   printf '%s\n' "$resolved"
 }
 
+platform_resolve_internal_service_token() {
+  local resolved="${INTERNAL_SERVICE_TOKEN:-}"
+  local from_file
+
+  if [[ -n "${resolved//[[:space:]]/}" ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  for candidate in "$BAZAAR_AUTH_SERVICE_PATH/.env" "$BAZAAR_AUTH_SERVICE_PATH/.env.local"; do
+    from_file="$(platform_env_value_for_key "$candidate" "INTERNAL_SERVICE_TOKEN" || true)"
+    if [[ -n "${from_file//[[:space:]]/}" ]]; then
+      resolved="$from_file"
+    fi
+  done
+
+  printf '%s\n' "$resolved"
+}
+
 platform_compose() {
   local allowed_origins
+  local resolved_internal_service_token
   local resolved_jwt_secret
   allowed_origins="$(platform_backend_allowed_origins)"
+  resolved_internal_service_token="$(platform_resolve_internal_service_token)"
   resolved_jwt_secret="$(platform_resolve_jwt_secret)"
 
   if [[ -z "${resolved_jwt_secret//[[:space:]]/}" ]]; then
     platform_warn "JWT_SECRET no definido en entorno ni en $BAZAAR_AUTH_SERVICE_PATH/.env(.local); se usara fallback de desarrollo"
   fi
 
-  INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}" \
+  if [[ -z "${resolved_internal_service_token//[[:space:]]/}" ]]; then
+    platform_warn "INTERNAL_SERVICE_TOKEN no definido en entorno ni en $BAZAAR_AUTH_SERVICE_PATH/.env(.local); los endpoints internos pueden fallar"
+  fi
+
+  INTERNAL_SERVICE_TOKEN="$resolved_internal_service_token" \
     BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
     BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH" \
     BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH" \
     BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
     BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
     BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
+    CART_DB_NAME="${CART_DB_NAME:-cart_db}" \
     JWT_SECRET="$resolved_jwt_secret" \
     GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \
     GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES" \

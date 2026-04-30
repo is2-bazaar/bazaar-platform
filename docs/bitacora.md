@@ -51,7 +51,7 @@ Cambios aplicados:
 - `order-service` usa `uint` para `BuyerID`, `SellerID`, `ProductID` y `ChangedBy`, manteniendo UUID para `OrderID`, `PaymentID` y `CouponID`
 - el gateway mantiene compatibilidad al convertir `sub` numérico/string a string decimal y reenviar `X-User-ID`
 - `cart-service` en compose usa variables `CART_DB_*` para host, puerto, usuario, password y nombre de base; el driver se mantiene como `DB_DRIVER` porque es la clave que el servicio lee, tomando su valor desde `CART_DB_DRIVER`
-- el `.env` local de carrito debe apuntar a la base `cart`, no a `catalog_db`
+- el `.env` local de carrito debe apuntar a la base `cart_db`, no a `catalog_db`
 
 Verificación realizada:
 

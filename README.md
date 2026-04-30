@@ -132,6 +132,8 @@ Defaults operativos:
 - `AUTH_FORGOT_PASSWORD_RATE_LIMIT_MAX_REQUESTS=3`
 - `AUTH_RESET_PASSWORD_RATE_LIMIT_WINDOW_MINUTES=15`
 - `AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS=5`
+- `CART_DB_NAME=cart_db`
+- `INTERNAL_SERVICE_TOKEN` opcional en `bazaar-platform`; si queda vacío, los scripts intentan reutilizar el valor de `bazaar-backend-auth-service/.env(.local)` para mantener sincronizados `auth-service`, `catalog-service` y `user-service`
 - `PLATFORM_LAN_IP` opcional para override manual de la IP de red local
 
 1. Validar prerequisitos:

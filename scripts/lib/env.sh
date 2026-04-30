@@ -102,6 +102,7 @@ load_platform_env() {
     MOBILE_DEV_URL
     PLATFORM_LAN_IP
     BACKEND_STACK
+    CART_DB_NAME
     INTERNAL_SERVICE_TOKEN
   )
   local path_var

@@ -58,7 +58,7 @@ services:
       AUTH_FORGOT_PASSWORD_RATE_LIMIT_MAX_REQUESTS: "${AUTH_FORGOT_PASSWORD_RATE_LIMIT_MAX_REQUESTS:-3}"
       AUTH_RESET_PASSWORD_RATE_LIMIT_WINDOW_MINUTES: "${AUTH_RESET_PASSWORD_RATE_LIMIT_WINDOW_MINUTES:-15}"
       AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS: "${AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS:-5}"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       auth-db:
         condition: service_healthy
@@ -101,7 +101,7 @@ services:
       CART_DB_PORT: "${CART_DB_PORT:-5432}"
       CART_DB_USER: "${CART_DB_USER:-postgres}"
       CART_DB_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
-      CART_DB_NAME: "${CART_DB_NAME:-cart}"
+      CART_DB_NAME: "${CART_DB_NAME:-cart_db}"
       # cart-service currently reads DB_DRIVER; expose it from the platform-level CART_DB_DRIVER knob.
       DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
@@ -163,7 +163,7 @@ services:
       USER_DB_NAME: "${USER_DB_NAME:-users}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       user-db:
         condition: service_healthy
@@ -213,7 +213,7 @@ services:
   cart-db:
     <<: *postgres-db
     environment:
-      POSTGRES_DB: "${CART_DB_NAME:-cart}"
+      POSTGRES_DB: "${CART_DB_NAME:-cart_db}"
       POSTGRES_USER: "${CART_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
     ports:
@@ -222,7 +222,7 @@ services:
       - cart-db-data:/var/lib/postgresql/data
     healthcheck:
       <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ${CART_DB_USER:-postgres} -d ${CART_DB_NAME:-cart}"]
+      test: ["CMD-SHELL", "pg_isready -U ${CART_DB_USER:-postgres} -d ${CART_DB_NAME:-cart_db}"]
 
   orders-db:
     <<: *postgres-db
