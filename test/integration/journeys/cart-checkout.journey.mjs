@@ -115,7 +115,8 @@ describe('Journey C: Cart → Checkout → Orders', async () => {
     const items2 = cartRes2.body?.items || [];
     const item2 = items2.find(i => i.product_id === productId);
     assert(item2, 'product should still be in cart');
-    assert(item2.quantity > (items1[0]?.quantity || 0), 'quantity should have increased');
+    const item1 = items1.find(i => i.product_id === productId);
+    assert(item2.quantity > (item1?.quantity || 0), 'quantity should have increased');
   });
 
 });

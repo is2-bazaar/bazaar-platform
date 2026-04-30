@@ -54,7 +54,7 @@ resolve_to_absolute() {
 platform_test_info "Iniciando suite de integration tests"
 require_command node
 platform_test_info "API base: $LOCAL_API_BASE_URL"
-platform_test_info "Using JWT_SECRET: ${JWT_SECRET:0:20}..."
+platform_test_info "Using JWT_SECRET configuration..."
 
 PLATFORM_COMPOSE_FILE="$PLATFORM_ROOT/infra/compose/docker-compose.platform.yml"
 
@@ -113,7 +113,7 @@ while ((SECONDS < DEADLINE)); do
     break
   fi
 
-  EXITED=$(docker compose -f "$PLATFORM_COMPOSE_FILE" ps --services --status exited 2>/dev/null | grep -v db || true)
+  EXITED=$(docker compose -f "$PLATFORM_COMPOSE_FILE" ps --services --status exited 2>/dev/null || true)
   if [[ -n "$EXITED" ]]; then
     platform_test_fail "Servicios caidos durante readiness: $EXITED"
   fi
