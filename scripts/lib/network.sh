@@ -14,6 +14,44 @@ platform_detect_lan_ip() {
   printf '%s\n' "$lan_ip"
 }
 
+platform_lan_ip_is_local() {
+  local lan_ip="$1"
+
+  [[ -n "$lan_ip" ]] || return 1
+
+  if command -v ip >/dev/null 2>&1; then
+    ip -o addr show scope global 2>/dev/null |
+      awk '{split($4, address, "/"); print address[1]}' |
+      grep -Fx -q -- "$lan_ip"
+    return $?
+  fi
+
+  if command -v hostname >/dev/null 2>&1; then
+    hostname -I 2>/dev/null | tr ' ' '\n' | grep -Fx -q -- "$lan_ip"
+    return $?
+  fi
+
+  return 1
+}
+
+platform_resolve_lan_ip() {
+  local configured_lan_ip="$1"
+  local detected_lan_ip
+
+  if [[ -n "$configured_lan_ip" ]] && platform_lan_ip_is_local "$configured_lan_ip"; then
+    printf '%s\n' "$configured_lan_ip"
+    return 0
+  fi
+
+  detected_lan_ip="$(platform_detect_lan_ip)"
+
+  if [[ -n "$configured_lan_ip" && "$configured_lan_ip" != "$detected_lan_ip" ]]; then
+    platform_warn "PLATFORM_LAN_IP=$configured_lan_ip no coincide con una IP local activa; usando ${detected_lan_ip:-sin IP LAN detectada}" >&2
+  fi
+
+  printf '%s\n' "$detected_lan_ip"
+}
+
 platform_url_scheme() {
   local url="$1"
 
@@ -126,6 +164,25 @@ platform_origin_with_host() {
   fi
 
   printf '%s://%s\n' "$(platform_url_scheme "$url")" "$formatted_host"
+}
+
+platform_url_with_host() {
+  local url="$1"
+  local host="$2"
+  local port
+  local path
+  local formatted_host
+
+  formatted_host="$(platform_format_url_host "$host")"
+  port="$(platform_url_port "$url")"
+  path="$(platform_url_path "$url")"
+
+  if [[ -n "$port" ]]; then
+    printf '%s://%s:%s%s\n' "$(platform_url_scheme "$url")" "$formatted_host" "$port" "$path"
+    return 0
+  fi
+
+  printf '%s://%s%s\n' "$(platform_url_scheme "$url")" "$formatted_host" "$path"
 }
 
 platform_append_csv_unique() {

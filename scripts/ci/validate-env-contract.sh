@@ -69,7 +69,9 @@ assert_keys_present "$defaults_file" \
   AUTH_DB_HOST_PORT \
   CATALOG_DB_HOST_PORT \
   CART_DB_HOST_PORT \
-  ORDER_DB_HOST_PORT
+  CART_DB_NAME \
+  ORDER_DB_HOST_PORT \
+  INTERNAL_SERVICE_TOKEN
 
 assert_keys_present "$local_example_file" \
   ENV_NAME \
@@ -94,6 +96,8 @@ assert_keys_present "$local_example_file" \
   CATALOG_DB_HOST_PORT \
   CART_DB_HOST_PORT \
   ORDER_DB_HOST_PORT \
+  CART_DB_NAME \
+  INTERNAL_SERVICE_TOKEN \
   PLATFORM_LAN_IP
 
 assert_keys_present "$staging_example_file" \
