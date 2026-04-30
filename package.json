@@ -1,0 +1,14 @@
+{
+  "name": "@bazaar/platform-integration-tests",
+  "version": "1.0.0",
+  "description": "Integration tests for Bazaar platform",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test:integration": "node --test test/integration/harness-test.mjs",
+    "test:integration:local": "./scripts/test/integration.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
