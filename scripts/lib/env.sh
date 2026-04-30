@@ -68,6 +68,19 @@ platform_require_repo_script() {
   [[ -f "$script_path" ]] || platform_fail "no se encontro el entrypoint de $repo_label: $script_path"
 }
 
+platform_rewrite_url_host_if_matches() {
+  local variable_name="$1"
+  local old_host="$2"
+  local new_host="$3"
+  local url_value="${!variable_name-}"
+
+  [[ -n "$old_host" && -n "$new_host" && -n "$url_value" ]] || return 0
+
+  if [[ "$(platform_url_host "$url_value")" == "$old_host" ]]; then
+    printf -v "$variable_name" '%s' "$(platform_url_with_host "$url_value" "$new_host")"
+  fi
+}
+
 load_platform_env() {
   local snapshot_vars=(
     ENV_NAME
@@ -89,10 +102,12 @@ load_platform_env() {
     MOBILE_DEV_URL
     PLATFORM_LAN_IP
     BACKEND_STACK
+    INTERNAL_SERVICE_TOKEN
   )
   local path_var
   local url_var
   local defaults_file
+  local configured_platform_lan_ip
 
   PLATFORM_ROOT="$(platform_root)"
   defaults_file="$PLATFORM_ROOT/defaults.env"
@@ -136,5 +151,11 @@ load_platform_env() {
   require_env MOBILE_API_BASE_URL
   require_env MOBILE_DEV_URL
 
-  PLATFORM_LAN_IP="${PLATFORM_LAN_IP:-$(platform_detect_lan_ip)}"
+  configured_platform_lan_ip="${PLATFORM_LAN_IP:-}"
+  PLATFORM_LAN_IP="$(platform_resolve_lan_ip "$configured_platform_lan_ip")"
+
+  if [[ -n "$configured_platform_lan_ip" && "$configured_platform_lan_ip" != "$PLATFORM_LAN_IP" ]]; then
+    platform_rewrite_url_host_if_matches MOBILE_API_BASE_URL "$configured_platform_lan_ip" "$PLATFORM_LAN_IP"
+    platform_rewrite_url_host_if_matches MOBILE_DEV_URL "$configured_platform_lan_ip" "$PLATFORM_LAN_IP"
+  fi
 }

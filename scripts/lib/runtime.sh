@@ -10,6 +10,7 @@ platform_wait_for_ready() {
   local url="$1"
   local timeout_seconds="${2:-90}"
   local deadline
+  local exited_services
 
   deadline=$((SECONDS + timeout_seconds))
 
@@ -18,10 +19,36 @@ platform_wait_for_ready() {
       return 0
     fi
 
+    exited_services="$(platform_compose_exited_services)"
+    if [[ -n "$exited_services" ]]; then
+      platform_warn "servicios de compose caidos durante readiness: $(printf '%s' "$exited_services" | tr '\n' ' ')"
+      platform_print_exited_service_logs "$exited_services"
+      return 1
+    fi
+
     sleep 2
   done
 
   return 1
+}
+
+platform_compose_exited_services() {
+  if ! declare -p PLATFORM_COMPOSE_SERVICES >/dev/null 2>&1; then
+    return 0
+  fi
+
+  platform_compose ps --services --status exited "${PLATFORM_COMPOSE_SERVICES[@]}" 2>/dev/null || true
+}
+
+platform_print_exited_service_logs() {
+  local services="$1"
+  local service
+
+  while IFS= read -r service; do
+    [[ -n "$service" ]] || continue
+    platform_info "ultimos logs de $service:"
+    platform_compose logs --tail=80 "$service" || true
+  done <<<"$services"
 }
 
 platform_mobile_effective_api_base_url() {

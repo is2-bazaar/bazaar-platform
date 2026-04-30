@@ -87,6 +87,7 @@ platform_compose() {
     platform_warn "JWT_SECRET no definido en entorno ni en $BAZAAR_AUTH_SERVICE_PATH/.env(.local); se usara fallback de desarrollo"
   fi
 
+  INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}" \
   BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
     BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH" \
     BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH" \
