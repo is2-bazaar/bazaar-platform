@@ -80,7 +80,7 @@ services:
       CATALOG_DB_NAME: "${CATALOG_DB_NAME:-catalog}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
-      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-bazaar-dev-internal-token}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -101,7 +101,7 @@ services:
       CART_DB_PORT: "${CART_DB_PORT:-5432}"
       CART_DB_USER: "${CART_DB_USER:-postgres}"
       CART_DB_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
-      CART_DB_NAME: "${CART_DB_NAME:-cart_db}"
+      CART_DB_NAME: "${CART_DB_NAME:-cart}"
       # cart-service currently reads DB_DRIVER; expose it from the platform-level CART_DB_DRIVER knob.
       DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
@@ -213,7 +213,7 @@ services:
   cart-db:
     <<: *postgres-db
     environment:
-      POSTGRES_DB: "${CART_DB_NAME:-cart_db}"
+      POSTGRES_DB: "${CART_DB_NAME:-cart}"
       POSTGRES_USER: "${CART_DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${CART_DB_PASSWORD:-postgres}"
     ports:
@@ -222,7 +222,7 @@ services:
       - cart-db-data:/var/lib/postgresql/data
     healthcheck:
       <<: *postgres-healthcheck
-      test: ["CMD-SHELL", "pg_isready -U ${CART_DB_USER:-postgres} -d ${CART_DB_NAME:-cart_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${CART_DB_USER:-postgres} -d ${CART_DB_NAME:-cart}"]
 
   orders-db:
     <<: *postgres-db
