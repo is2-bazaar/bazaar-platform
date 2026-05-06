@@ -136,6 +136,8 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
+      PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payment-service:${PAYMENT_SERVICE_PORT:-8084}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       orders-db:
         condition: service_healthy
@@ -143,6 +145,29 @@ services:
         condition: service_started
       cart-service:
         condition: service_started
+      payment-service:
+        condition: service_started
+
+  payment-service:
+    build:
+      context: ${BAZAAR_PAYMENT_SERVICE_PATH}
+      dockerfile: Dockerfile
+    environment:
+      SERVICE_NAME: "payment-service"
+      PORT: "${PAYMENT_SERVICE_PORT:-8084}"
+      PAYMENT_DB_HOST: "${PAYMENT_DB_HOST:-payment-db}"
+      PAYMENT_DB_PORT: "${PAYMENT_DB_PORT:-5432}"
+      PAYMENT_DB_USER: "${PAYMENT_DB_USER:-postgres}"
+      PAYMENT_DB_PASSWORD: "${PAYMENT_DB_PASSWORD:-postgres}"
+      PAYMENT_DB_NAME: "${PAYMENT_DB_NAME:-payment_db}"
+      PAYMENT_DB_DRIVER: "${PAYMENT_DB_DRIVER:-postgres}"
+      PAYMENT_DB_SSLMODE: "${PAYMENT_DB_SSLMODE:-disable}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8084}:8084"
+    depends_on:
+      payment-db:
+        condition: service_healthy
 
   user-service:
     build:
@@ -238,9 +263,24 @@ services:
       <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${ORDER_DB_USER:-postgres} -d ${ORDER_DB_NAME:-orders}"]
 
+  payment-db:
+    <<: *postgres-db
+    environment:
+      POSTGRES_DB: "${PAYMENT_DB_NAME:-payment_db}"
+      POSTGRES_USER: "${PAYMENT_DB_USER:-postgres}"
+      POSTGRES_PASSWORD: "${PAYMENT_DB_PASSWORD:-postgres}"
+    ports:
+      - "${PAYMENT_DB_HOST_PORT:-5438}:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER:-postgres} -d ${PAYMENT_DB_NAME:-payment_db}"]
+
 volumes:
   user-db-data:
   auth-db-data:
   catalog-db-data:
   cart-db-data:
   orders-db-data:
+  payment-db-data:
