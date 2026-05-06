@@ -3,3 +3,6 @@
 .expo
 .qwen
 .codex
+tmp/
+tmp
+.atl
