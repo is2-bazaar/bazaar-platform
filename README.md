@@ -85,6 +85,7 @@ Ese layout coincide con los defaults de `defaults.env`:
 - `BAZAAR_CART_SERVICE_PATH=../bazaar-backend-cart-service`
 - `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
 - `BAZAAR_ORDER_SERVICE_PATH=../bazaar-backend-order-service`
+- `BAZAAR_PAYMENT_SERVICE_PATH=../bazaar-backend-payment-service`
 - `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
@@ -109,6 +110,7 @@ Defaults operativos:
 - `BAZAAR_CART_SERVICE_PATH=../bazaar-backend-cart-service`
 - `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
 - `BAZAAR_ORDER_SERVICE_PATH=../bazaar-backend-order-service`
+- `BAZAAR_PAYMENT_SERVICE_PATH=../bazaar-backend-payment-service`
 - `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
