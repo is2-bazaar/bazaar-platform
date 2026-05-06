@@ -27,7 +27,6 @@ services:
       USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
-      ORDERS_SERVICE_URL: "${ORDERS_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
