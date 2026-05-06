@@ -38,6 +38,7 @@ create_stub_repo "$TMP_ROOT/bazaar-backend-auth-service"
 create_stub_repo "$TMP_ROOT/bazaar-backend-cart-service"
 create_stub_repo "$TMP_ROOT/bazaar-backend-catalog-service"
 create_stub_repo "$TMP_ROOT/bazaar-backend-order-service"
+create_stub_repo "$TMP_ROOT/bazaar-backend-payment-service"
 create_stub_repo "$TMP_ROOT/bazaar-backend-user-service"
 
 create_stub_runtime_repo "$TMP_ROOT/bazaar-backoffice"
@@ -55,6 +56,7 @@ env \
   BAZAAR_CART_SERVICE_PATH="$TMP_ROOT/bazaar-backend-cart-service" \
   BAZAAR_CATALOG_SERVICE_PATH="$TMP_ROOT/bazaar-backend-catalog-service" \
   BAZAAR_ORDER_SERVICE_PATH="$TMP_ROOT/bazaar-backend-order-service" \
+  BAZAAR_PAYMENT_SERVICE_PATH="$TMP_ROOT/bazaar-backend-payment-service" \
   BAZAAR_USER_SERVICE_PATH="$TMP_ROOT/bazaar-backend-user-service" \
   BAZAAR_BACKOFFICE_PATH="$TMP_ROOT/bazaar-backoffice" \
   BAZAAR_MOBILE_PATH="$TMP_ROOT/bazaar-mobile" \

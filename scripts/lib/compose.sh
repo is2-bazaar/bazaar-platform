@@ -12,7 +12,7 @@ platform_backend_allowed_origins() {
 platform_backend_select_stack() {
   case "${BACKEND_STACK:-full}" in
     full)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders"
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments"
       # shellcheck disable=SC2034
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
@@ -21,6 +21,7 @@ platform_backend_select_stack() {
         catalog-service
         cart-service
         orders-service
+        payment-service
       )
       ;;
     auth)
@@ -118,6 +119,7 @@ platform_compose() {
     BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH" \
     BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
     BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
+    BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH" \
     BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
     CART_DB_NAME="${CART_DB_NAME:-cart_db}" \
     JWT_SECRET="$resolved_jwt_secret" \
