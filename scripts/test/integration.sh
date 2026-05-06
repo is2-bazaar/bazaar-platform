@@ -64,7 +64,7 @@ if ! docker compose -f "$PLATFORM_COMPOSE_FILE" config >/dev/null 2>&1; then
 fi
 
 platform_test_info "Verificando que los paths de los repos existan..."
-for repo_var in BAZAAR_API_GATEWAY_PATH BAZAAR_AUTH_SERVICE_PATH BAZAAR_CART_SERVICE_PATH BAZAAR_CATALOG_SERVICE_PATH BAZAAR_ORDER_SERVICE_PATH BAZAAR_USER_SERVICE_PATH; do
+for repo_var in BAZAAR_API_GATEWAY_PATH BAZAAR_AUTH_SERVICE_PATH BAZAAR_CART_SERVICE_PATH BAZAAR_CATALOG_SERVICE_PATH BAZAAR_ORDER_SERVICE_PATH BAZAAR_PAYMENT_SERVICE_PATH BAZAAR_USER_SERVICE_PATH; do
   resolve_to_absolute "$repo_var"
   repo_path="${!repo_var}"
   if [[ ! -d "$repo_path" ]]; then
@@ -82,6 +82,7 @@ BACKEND_STACK=full \
   BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH" \
   BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
   BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
+  BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH" \
   BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
   INTERNAL_SERVICE_TOKEN="$INTERNAL_SERVICE_TOKEN" \
   AUTH_BOOTSTRAP_ADMINS="$AUTH_BOOTSTRAP_ADMINS" \
@@ -90,7 +91,7 @@ BACKEND_STACK=full \
   GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS=100 \
   AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS=100 \
   GATEWAY_ALLOWED_ORIGINS="" \
-  GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders" \
+  GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments" \
   docker compose -f "$PLATFORM_COMPOSE_FILE" up --build -d \
   api-gateway \
   auth-service \
@@ -98,11 +99,13 @@ BACKEND_STACK=full \
   catalog-service \
   cart-service \
   orders-service \
+  payment-service \
   auth-db \
   user-db \
   catalog-db \
   cart-db \
-  orders-db
+  orders-db \
+  payment-db
 
 platform_test_info "Esperando readiness del gateway..."
 MAX_WAIT=120

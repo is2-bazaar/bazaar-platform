@@ -176,6 +176,7 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-backend-cart-service` vive como repo hermano y es el source of truth de `cart-service`.
 - `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
 - `bazaar-backend-order-service` vive como repo hermano y es el source of truth de `orders-service`.
+- `bazaar-backend-payment-service` vive como repo hermano y es el source of truth de `payment-service`.
 - `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
 - `bazaar-platform` levanta el backend local usando solamente los repos de servicios separados.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
@@ -194,6 +195,8 @@ Atajos opcionales para levantar una sola unidad:
 -`Bazaar-backend-user-service` https://github.com/is2-bazaar/bazaar-backend-user-service.git
 
 -`Bazaar-backend-order-service` https://github.com/is2-bazaar/bazaar-backend-order-service.git
+
+-`Bazaar-backend-payment-service` https://github.com/is2-bazaar/bazaar-backend-payment-service.git
 
 -`Bazaar-mobile` https://github.com/is2-bazaar/bazaar-mobile.git
 
