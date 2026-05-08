@@ -381,7 +381,7 @@ count = 0
 for o in orders:
     if not isinstance(o, dict):
         continue
-    sid = o.get("seller_id") or o.get("sellerID")
+    sid = o.get("seller_id") or o.get("sellerID") or o.get("SellerID")
     if str(sid) == str(seller_id):
         count += 1
 
@@ -428,7 +428,7 @@ if not orders:
 for o in orders:
     if not isinstance(o, dict):
         continue
-    sid = o.get("seller_id") or o.get("sellerID")
+    sid = o.get("seller_id") or o.get("sellerID") or o.get("SellerID")
     if str(sid) != str(seller_id):
         print("false")
         sys.exit(0)
@@ -459,26 +459,39 @@ orders = []
 if isinstance(data, list):
     orders = data
 elif isinstance(data, dict):
-    for key in ("orders", "data"):
-        val = data.get(key)
-        if isinstance(val, list):
-            orders = val
-            break
-    if not orders and isinstance(data.get("data"), dict):
-        val2 = data["data"].get("orders")
-        if isinstance(val2, list):
-            orders = val2
+    if isinstance(data.get("items"), list):
+        orders = [data]
+    else:
+        for key in ("orders", "data"):
+            val = data.get(key)
+            if isinstance(val, list):
+                orders = val
+                break
+        if not orders and isinstance(data.get("data"), dict):
+            wrapped = data["data"]
+            if isinstance(wrapped.get("items"), list):
+                orders = [wrapped]
+            else:
+                val2 = wrapped.get("orders")
+                if isinstance(val2, list):
+                    orders = val2
+
+if not orders:
+    print("false")
+    sys.exit(0)
 
 for o in orders:
     if not isinstance(o, dict):
-        continue
+        print("false")
+        sys.exit(0)
     items = o.get("items")
     if not isinstance(items, list):
-        continue
+        print("false")
+        sys.exit(0)
     for item in items:
         if not isinstance(item, dict):
             continue
-        sid = item.get("seller_id") or item.get("sellerID")
+        sid = item.get("seller_id") or item.get("sellerID") or item.get("SellerID")
         if str(sid) != str(seller_id):
             print("false")
             sys.exit(0)
@@ -514,7 +527,7 @@ if isinstance(data, dict):
 for item in items:
     if not isinstance(item, dict):
         continue
-    sid = item.get("seller_id") or item.get("sellerID")
+    sid = item.get("seller_id") or item.get("sellerID") or item.get("SellerID")
     if str(sid) != str(seller_id):
         print("true")
         sys.exit(0)
@@ -542,22 +555,19 @@ except Exception:
 
 # Direct root status
 if isinstance(data, dict):
-    for key in ("status",):
-        if key in data:
-            print(data[key])
-            sys.exit(0)
+    if "status" in data:
+        print(data["status"])
+        sys.exit(0)
     # Try data wrapper
-    if isinstance(data.get("data"), dict):
-        for key in ("status",):
-            if key in data["data"]:
-                print(data["data"][key])
-                sys.exit(0)
+    wrapped = data.get("data")
+    if isinstance(wrapped, dict) and "status" in wrapped:
+        print(wrapped["status"])
+        sys.exit(0)
     # Try orders[0] wrapper (checkout response)
-    if isinstance(data.get("orders"), list) and len(data["orders"]) > 0:
-        for key in ("status",):
-            if key in data["orders"][0]:
-                print(data["orders"][0][key])
-                sys.exit(0)
+    orders = data.get("orders")
+    if isinstance(orders, list) and orders and isinstance(orders[0], dict) and "status" in orders[0]:
+        print(orders[0]["status"])
+        sys.exit(0)
 
 print("")
 PY
@@ -989,8 +999,9 @@ assert_no_internal_fields() {
   local case_name="$2"
 
   local result
-  result="$(python3 - "$file" <<'PY'
-import sys
+  result="$(
+    python3 - "$file" <<'PY'
+import json, sys
 file_path = sys.argv[1]
 try:
     with open(file_path, "r", encoding="utf-8") as f:
@@ -998,16 +1009,29 @@ try:
 except Exception:
     sys.exit(0)
 forbidden = ["idempotency_key", "last_error", "cart_cleanup_status", "stock_reservation_id"]
-found = []
-for key in forbidden:
-    if ('"' + key + '"') in text:
-        found.append(key)
+found = set()
+
+def walk(obj):
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key in forbidden:
+                found.add(key)
+            walk(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            walk(item)
+
+try:
+    walk(json.loads(text))
+except Exception:
+    pass
+
 if found:
-    print("LEAKED: " + ", ".join(found))
+    print("LEAKED: " + ", ".join(sorted(found)))
 else:
     print("ok")
 PY
-)"
+  )"
 
   if [[ "$result" == "ok" ]]; then
     record PASS "no internal fields $case_name" "clean"
