@@ -4,8 +4,8 @@ import { GET, POST, PATCH, uniqueEmail, registerAndLogin, tokenFromAuthResponse,
 const assertEq = (a, e, msg) => { if (a !== e) throw new Error(msg || `expected ${e}, got ${a}`); };
 const assertStatus = (res, expected, msg) => assertEq(res.status, expected, msg || `status ${res.status} !== ${expected}: ${JSON.stringify(res.body)}`);
 
-const ADMIN_EMAIL = 'admin@bazaar.test';
-const ADMIN_PASSWORD = 'AdminPass123!';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@bazaar.test';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 
 let adminToken = null;
 let adminLoginAttempts = 0;
