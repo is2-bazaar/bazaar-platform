@@ -395,7 +395,8 @@ register_user() {
   local full_name="E2E ${username}"
 
   local payload
-  payload="$(cat <<JSON
+  payload="$(
+    cat <<JSON
 {
   "email": "$email",
   "password": "$PASSWORD",
@@ -446,7 +447,8 @@ create_product() {
   local stock="$4"
 
   local payload
-  payload="$(cat <<JSON
+  payload="$(
+    cat <<JSON
 {
   "name": "$label",
   "description": "E2E SDD7 product $label",
@@ -544,7 +546,8 @@ internal_cart_cleanup() {
   local items_json="$4"
 
   local payload
-  payload="$(cat <<JSON
+  payload="$(
+    cat <<JSON
 {
   "buyer_id": $buyer_id,
   "checkout_group_id": "$checkout_group_id",
@@ -714,7 +717,8 @@ checkout_sdd7_cleanup_suite() {
 admin_login() {
   local payload code token
 
-  payload="$(cat <<JSON
+  payload="$(
+    cat <<JSON
 {
   "email": "$ADMIN_EMAIL",
   "password": "$ADMIN_PASSWORD"
