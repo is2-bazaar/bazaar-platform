@@ -9,8 +9,8 @@ const BASE_URL = process.env.LOCAL_API_BASE_URL || 'http://localhost:8080';
 
 export const config = {
   baseUrl: BASE_URL,
-  jwtSecret: process.env.JWT_SECRET || 'bazaar-test-jwt-secret-2024',
-  internalToken: process.env.INTERNAL_SERVICE_TOKEN || 'bazaar-internal-test-token',
+  jwtSecret: process.env.JWT_SECRET || '',
+  internalToken: process.env.INTERNAL_SERVICE_TOKEN || '',
 };
 
 export function uniqueEmail() {
