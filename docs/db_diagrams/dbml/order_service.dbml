@@ -1,0 +1,85 @@
+Project order_service {
+  database_type: "PostgreSQL"
+}
+
+Table checkout_groups {
+  id uuid [pk]
+  buyer_id uint [not null]
+  idempotency_key varchar [not null]
+  status varchar [not null]
+  grand_total bigint [not null]
+
+  payment_id uuid
+  payment_status varchar
+  stock_reservation_status varchar
+  stock_reservation_id uuid
+  stock_confirmation_status varchar
+  orders_confirmation_status varchar
+  cart_cleanup_status varchar
+  last_error text
+
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  indexes {
+    (buyer_id, idempotency_key) [unique]
+  }
+}
+
+Table orders {
+  id uuid [pk]
+  buyer_id uint [not null]
+  seller_id uint [not null]
+
+  coupon_id uuid
+  coupon_discount decimal
+
+  status varchar [not null]
+  total decimal [not null]
+  subtotal decimal [not null]
+
+  delivery_address text [not null]
+  delivery_city varchar
+  delivery_province varchar
+
+  tracking_code varchar
+  payment_id uuid
+  idempotency_key varchar [not null]
+  checkout_group_id uuid
+
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  indexes {
+    (checkout_group_id, seller_id) [unique]
+  }
+}
+
+Table order_items {
+  id uuid [pk]
+  order_id uuid [not null]
+  product_id uint [not null]
+  seller_id uint [not null]
+  product_name varchar [not null]
+  price decimal [not null]
+  quantity int [not null]
+  image_url text
+  created_at timestamp
+}
+
+
+Table order_status_histories {
+  id uuid [pk]
+  order_id uuid [not null]
+  from_status varchar
+  to_status varchar [not null]
+  changed_by uint
+  reason text
+  created_at timestamp
+}
+
+Ref: orders.checkout_group_id > checkout_groups.id
+Ref: order_items.order_id > orders.id
+Ref: order_status_histories.order_id > orders.id

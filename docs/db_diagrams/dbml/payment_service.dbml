@@ -1,0 +1,18 @@
+Project payment_service {
+  database_type: "PostgreSQL"
+}
+
+Table payments {
+  id uuid [pk]
+  order_id uuid
+  checkout_group_id uuid [unique]
+  amount decimal [not null]
+  status varchar [not null, default: 'pending']
+  idempotency_key varchar [not null, unique]
+  external_id varchar
+  payment_url text
+  provider varchar [not null, default: 'mercadopago']
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+}

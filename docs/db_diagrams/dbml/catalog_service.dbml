@@ -1,0 +1,55 @@
+Project catalog_service {
+  database_type: "PostgreSQL"
+}
+
+Table products {
+  id uint [pk]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  seller_id int [not null]
+  name varchar [not null]
+  description text [not null]
+  price decimal [not null]
+  stock_quantity int [not null]
+  image_bucket_url text
+  category varchar
+  status varchar
+}
+
+Table idempotency_keys {
+  id uint [pk]
+  key varchar(255) [not null]
+  actor_id int [not null]
+  method varchar(16) [not null]
+  path varchar(255) [not null]
+  request_hash varchar(64) [not null]
+  resource_type varchar(64) [not null]
+  resource_id uint [not null]
+  response_status int [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (key, actor_id) [unique]
+  }
+}
+
+Table stock_reservations {
+  id uuid [pk]
+  checkout_group_id uuid [not null, unique]
+  status varchar [not null, default: 'reserved']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table stock_reservation_items {
+  id uuid [pk]
+  reservation_id uuid [not null]
+  product_id int [not null]
+  quantity int [not null]
+  created_at timestamp
+}
+
+Ref: stock_reservation_items.reservation_id > stock_reservations.id
