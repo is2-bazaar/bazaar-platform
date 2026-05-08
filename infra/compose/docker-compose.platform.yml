@@ -38,8 +38,6 @@ services:
       context: ${BAZAAR_AUTH_SERVICE_PATH}
       dockerfile: Dockerfile
     env_file:
-      - path: ${BAZAAR_AUTH_SERVICE_PATH}/.env
-        required: false
       - path: ${BAZAAR_AUTH_SERVICE_PATH}/.env.local
         required: false
     environment:
@@ -51,7 +49,15 @@ services:
       AUTH_DB_PASSWORD: "${AUTH_DB_PASSWORD:-postgres}"
       AUTH_DB_NAME: "${AUTH_DB_NAME:-auth}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      JWT_ACCESS_TOKEN_TTL_MINUTES: "${JWT_ACCESS_TOKEN_TTL_MINUTES:-15}"
+      JWT_REFRESH_TOKEN_TTL_HOURS: "${JWT_REFRESH_TOKEN_TTL_HOURS:-168}"
       USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
+      BREVO_BASE_URL: "${BREVO_BASE_URL:-https://api.brevo.com/v3}"
+      BREVO_API_KEY: "${BREVO_API_KEY:-local-dev-brevo-key}"
+      BREVO_SENDER_EMAIL: "${BREVO_SENDER_EMAIL:-no-reply@bazaar.dev}"
+      BREVO_SENDER_NAME: "${BREVO_SENDER_NAME:-Bazaar}"
+      AUTH_RESET_CODE_TTL_MINUTES: "${AUTH_RESET_CODE_TTL_MINUTES:-15}"
+      AUTH_RESET_CODE_SUBJECT: "${AUTH_RESET_CODE_SUBJECT:-Codigo de recuperacion de Bazaar}"
       AUTH_LOGIN_RATE_LIMIT_WINDOW_MINUTES: "${AUTH_LOGIN_RATE_LIMIT_WINDOW_MINUTES:-15}"
       AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS: "${AUTH_LOGIN_RATE_LIMIT_MAX_REQUESTS:-5}"
       AUTH_FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES: "${AUTH_FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MINUTES:-15}"
@@ -59,11 +65,14 @@ services:
       AUTH_RESET_PASSWORD_RATE_LIMIT_WINDOW_MINUTES: "${AUTH_RESET_PASSWORD_RATE_LIMIT_WINDOW_MINUTES:-15}"
       AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS: "${AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS:-5}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      AUTH_BOOTSTRAP_ADMINS: '${AUTH_BOOTSTRAP_ADMINS:-[{"email":"admin@bazaar.dev","username":"admin","password":"Admin1234","full_name":"Admin Bazaar"},{"email":"testadmin@bazaar.dev","username":"testadmin","password":"TestAdmin1234","full_name":"Test Admin Bazaar"}]}'
     depends_on:
       auth-db:
         condition: service_healthy
       user-service:
         condition: service_started
+    ports:
+      - "${AUTH_SERVICE_HOST_PORT:-18081}:8080"
 
   catalog-service:
     build:
@@ -84,6 +93,8 @@ services:
     depends_on:
       catalog-db:
         condition: service_healthy
+    ports:
+      - "${CATALOG_SERVICE_HOST_PORT:-18083}:8080"
 
   cart-service:
     build:
@@ -112,6 +123,8 @@ services:
         condition: service_healthy
       catalog-service:
         condition: service_started
+    ports:
+      - "${CART_SERVICE_HOST_PORT:-18085}:8080"
 
   orders-service:
     build:
@@ -147,6 +160,8 @@ services:
         condition: service_started
       payment-service:
         condition: service_started
+    ports:
+      - "${ORDER_SERVICE_HOST_PORT:-18086}:8080"
 
   payment-service:
     build:
@@ -171,7 +186,7 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     ports:
-      - "${PAYMENT_SERVICE_PORT:-8084}:8080"
+      - "${PAYMENT_SERVICE_PORT:-18084}:8080"
     depends_on:
       payment-db:
         condition: service_healthy
@@ -199,6 +214,8 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+    ports:
+      - "${USER_SERVICE_HOST_PORT:-18082}:8080"
 
   user-db:
     <<: *postgres-db
