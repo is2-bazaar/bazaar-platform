@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
 ###############################################################################
 # Bazaar Render E2E — Checkout Saga / SDD 7
@@ -17,12 +17,15 @@ set -uo pipefail
 #   Se asume PAYMENT_SIMULATION_MODE=approved en Render payment-service.
 #
 # Uso:
-#   ./scripts/e2e_render_checkout_saga_sdd7.sh
+#   ./scripts/test/integration/e2e_render_checkout_saga_sdd7.sh
 #
 # Opcionales:
-#   RUN_ID=123 ./scripts/e2e_render_checkout_saga_sdd7.sh
-#   INTERNAL_SERVICE_TOKEN=... ./scripts/e2e_render_checkout_saga_sdd7.sh
+#   RUN_ID=123 ./scripts/test/integration/e2e_render_checkout_saga_sdd7.sh
+#   INTERNAL_SERVICE_TOKEN=... ./scripts/test/integration/e2e_render_checkout_saga_sdd7.sh
 ###############################################################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLATFORM_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 API_BASE="${API_BASE:-https://bazaar-backend-api-gateway.onrender.com}"
 AUTH_BASE="${AUTH_BASE:-https://bazaar-backend-auth-service.onrender.com}"
@@ -33,10 +36,9 @@ ORDER_BASE="${ORDER_BASE:-https://bazaar-backend-order-service.onrender.com}"
 PAYMENT_BASE="${PAYMENT_BASE:-https://bazaar-backend-payment-service.onrender.com}"
 
 # Load local env vars if present
-if [[ -f ".env.local" ]]; then
-  source ".env.local"
-elif [[ -f "$(dirname "$0")/../../../.env.local" ]]; then
-  source "$(dirname "$0")/../../../.env.local"
+# shellcheck disable=SC1091
+if [[ -f "$PLATFORM_ROOT/.env.local" ]]; then
+  source "$PLATFORM_ROOT/.env.local"
 fi
 
 INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}"
@@ -51,9 +53,16 @@ HTTP_DIR="$OUT_DIR/http"
 STATE_DIR="$OUT_DIR/state"
 REPORT="$OUT_DIR/REPORT.md"
 RESULTS="$OUT_DIR/results.tsv"
+TMP_DIR="$(mktemp -d)"
+
+cleanup() {
+  rm -rf "$TMP_DIR"
+}
+
+trap cleanup EXIT
 
 mkdir -p "$HTTP_DIR" "$STATE_DIR"
-: > "$RESULTS"
+: >"$RESULTS"
 
 PASS=0
 FAIL=0
@@ -69,22 +78,27 @@ record() {
   local status="$1"
   local name="$2"
   local note="${3:-}"
-  printf "%s\t%s\t%s\n" "$status" "$name" "$note" >> "$RESULTS"
+  printf "%s\t%s\t%s\n" "$status" "$name" "$note" >>"$RESULTS"
 
   case "$status" in
-    PASS) PASS=$((PASS+1)); green "PASS - $name - $note" ;;
-    FAIL) FAIL=$((FAIL+1)); red "FAIL - $name - $note" ;;
-    SKIP) SKIP=$((SKIP+1)); yellow "SKIP - $name - $note" ;;
+    PASS) PASS=$((PASS + 1)) && green "PASS - $name - $note" ;;
+    FAIL) FAIL=$((FAIL + 1)) && red "FAIL - $name - $note" ;;
+    SKIP) SKIP=$((SKIP + 1)) && yellow "SKIP - $name - $note" ;;
   esac
 }
 
-state_put() { printf '%s' "$2" > "$STATE_DIR/$1"; }
+state_put() { printf '%s' "$2" >"$STATE_DIR/$1"; }
 state_get() { [[ -f "$STATE_DIR/$1" ]] && cat "$STATE_DIR/$1"; }
 
 body_flat() {
   local file="$1"
   [[ -f "$file" ]] || return 0
-  tr '\n' ' ' < "$file" | sed 's/[[:space:]]\+/ /g' | sed 's/|/\//g'
+  tr '\n' ' ' <"$file" | sed 's/[[:space:]]\+/ /g' | sed 's/|/\//g'
+}
+
+mask_password_in_payload() {
+  local payload="$1"
+  printf '%s\n' "$payload" | sed 's/"password":"[^"]*"/"password":"***"/g'
 }
 
 json_get() {
@@ -292,6 +306,7 @@ req() {
 
   {
     echo "$method $url"
+    local h
     for h in "$@"; do
       case "$h" in
         Authorization:*) echo "Authorization: Bearer ***" ;;
@@ -299,8 +314,8 @@ req() {
         *) echo "$h" ;;
       esac
     done
-    [[ -n "$payload" ]] && echo "BODY: $payload"
-  } > "$req_file"
+    [[ -n "$payload" ]] && echo "BODY: $(mask_password_in_payload "$payload")"
+  } >"$req_file"
 
   local args=(curl -sS -X "$method" "$url" -D "$headers" -o "$body" -w '%{http_code}' -H "Accept: application/json")
 
@@ -315,7 +330,7 @@ req() {
 
   local code
   code="$("${args[@]}" 2>/dev/null || printf "000")"
-  printf '%s' "$code" > "$code_file"
+  printf '%s' "$code" >"$code_file"
   printf '%s' "$code"
 }
 
@@ -332,7 +347,7 @@ wait_ready_one() {
   local max="${3:-60}"
   local i code body
 
-  for ((i=1; i<=max; i++)); do
+  for ((i = 1; i <= max; i++)); do
     code="$(req "wait-$label-$i" GET "$url/readyz")"
 
     if is_2xx "$code"; then
@@ -372,7 +387,7 @@ wake_services() {
 register_user() {
   local label="$1"
 
-  USER_SEQ=$((USER_SEQ+1))
+  USER_SEQ=$((USER_SEQ + 1))
 
   local suffix="${RUN_ID: -6}${USER_SEQ}"
   local username="u${suffix}"
@@ -389,7 +404,7 @@ register_user() {
   "role": "buyer"
 }
 JSON
-)"
+  )"
 
   local code
   code="$(req "auth-register-$label" POST "$API_BASE/auth/register" "$payload")"
@@ -442,7 +457,7 @@ create_product() {
   "status": "active"
 }
 JSON
-)"
+  )"
 
   local code
   code="$(req "catalog-create-$label" POST "$API_BASE/catalog/me/products" "$payload" "$(auth_h "$token")" "Idempotency-Key: product-$label-$RUN_ID")"
@@ -536,7 +551,7 @@ internal_cart_cleanup() {
   "items": $items_json
 }
 JSON
-)"
+  )"
 
   req "cart-cleanup-$label" POST "$CART_BASE/internal/checkout-cleanup" "$payload" "$(cart_internal_h)"
 }
@@ -696,7 +711,6 @@ checkout_sdd7_cleanup_suite() {
   [[ "$qty" == "3" ]] && record PASS "checkout retry does not cleanup re-added items" "qty=$qty" || record FAIL "checkout retry does not cleanup re-added items" "qty=$qty expected=3"
 }
 
-
 admin_login() {
   local payload code token
 
@@ -706,7 +720,7 @@ admin_login() {
   "password": "$ADMIN_PASSWORD"
 }
 JSON
-)"
+  )"
 
   code="$(req admin-login POST "$API_BASE/auth/login" "$payload")"
   token="$(json_get "$HTTP_DIR/admin-login.json" ".access_token")"
@@ -782,7 +796,6 @@ admin_smoke_suite() {
   fi
 }
 
-
 write_report() {
   {
     echo "# Bazaar Render E2E Checkout Saga SDD7"
@@ -798,9 +811,9 @@ write_report() {
     echo ""
     echo "| Estado | Caso | Notas |"
     echo "|---|---|---|"
-    while IFS=$'\t' read -r status name note; do
-      echo "| $status | $name | $note |"
-    done < "$RESULTS"
+    while IFS=$'\t' read -r s name note; do
+      echo "| $s | $name | $note |"
+    done <"$RESULTS"
     echo ""
     echo "## Summary"
     echo ""
@@ -811,7 +824,7 @@ write_report() {
     echo "## Raw"
     echo ""
     echo "$HTTP_DIR"
-  } > "$REPORT"
+  } >"$REPORT"
 }
 
 main() {
@@ -835,7 +848,7 @@ main() {
   echo "REPORT=$REPORT"
   echo "RAW=$HTTP_DIR"
 
-  if (( FAIL > 0 )); then
+  if ((FAIL > 0)); then
     red "E2E SDD7 finished with failures."
     exit 1
   fi

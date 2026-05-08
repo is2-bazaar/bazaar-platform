@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLATFORM_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+PREFLIGHT_FILE=""
+
+cleanup() {
+  if [[ -n "$PREFLIGHT_FILE" && -f "$PREFLIGHT_FILE" ]]; then
+    rm -f "$PREFLIGHT_FILE"
+  fi
+}
+
+trap cleanup EXIT
+
 # Load local env vars if present
-if [[ -f ".env.local" ]]; then
-  source ".env.local"
-elif [[ -f "$(dirname "$0")/../../../.env.local" ]]; then
-  source "$(dirname "$0")/../../../.env.local"
+# shellcheck disable=SC1091
+if [[ -f "$PLATFORM_ROOT/.env.local" ]]; then
+  source "$PLATFORM_ROOT/.env.local"
 fi
 
 export API_BASE="https://bazaar-backend-api-gateway.onrender.com"
@@ -24,7 +35,6 @@ export ORDER_SERVICE_URL="$ORDER_BASE"
 export PAYMENT_SERVICE_URL="$PAYMENT_BASE"
 export PAYMENTS_SERVICE_URL="$PAYMENT_BASE"
 
-# Ensure these are provided by .env.local
 export INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}"
 export CART_INTERNAL_SERVICE_TOKEN="${CART_INTERNAL_SERVICE_TOKEN:-$INTERNAL_SERVICE_TOKEN}"
 
@@ -35,27 +45,26 @@ export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export PAYMENT_SIMULATION_MODE="approved"
 
 echo "[sdd7] Checking cart-service internal token..."
-preflight_code="$(
-  curl -sS -o /tmp/sdd7-cart-internal-preflight.json -w '%{http_code}' \
-    -X POST "$CART_BASE/internal/checkout-cleanup" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/json" \
-    -H "X-Internal-Service-Token: $CART_INTERNAL_SERVICE_TOKEN" \
-    --data '{"buyer_id":999999999,"checkout_group_id":"11111111-1111-1111-1111-111111111111","items":[{"product_id":1,"quantity":1}]}'
-)"
+PREFLIGHT_FILE="$(mktemp)"
+preflight_code="$(curl -sS -o "$PREFLIGHT_FILE" -w '%{http_code}' \
+  -X POST "$CART_BASE/internal/checkout-cleanup" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "X-Internal-Service-Token: $CART_INTERNAL_SERVICE_TOKEN" \
+  --data '{"buyer_id":999999999,"checkout_group_id":"11111111-1111-1111-1111-111111111111","items":[{"product_id":1,"quantity":1}]}')"
 
 if [[ "$preflight_code" == "401" || "$preflight_code" == "403" ]]; then
   echo "[sdd7][error] cart-service rejected the internal token with HTTP $preflight_code"
   echo "[sdd7][error] Response:"
-  cat /tmp/sdd7-cart-internal-preflight.json
+  cat "$PREFLIGHT_FILE"
   echo
   echo "[sdd7][fix required in Render]"
   echo "In bazaar-backend-cart-service, add/update:"
-  echo "  INTERNAL_SERVICE_TOKEN=$INTERNAL_SERVICE_TOKEN"
+  echo " INTERNAL_SERVICE_TOKEN=$INTERNAL_SERVICE_TOKEN"
   echo
   echo "In bazaar-backend-order-service, verify:"
-  echo "  INTERNAL_SERVICE_TOKEN=$INTERNAL_SERVICE_TOKEN"
-  echo "  CART_SERVICE_URL=$CART_SERVICE_URL"
+  echo " INTERNAL_SERVICE_TOKEN=$INTERNAL_SERVICE_TOKEN"
+  echo " CART_SERVICE_URL=$CART_SERVICE_URL"
   echo
   echo "Then redeploy cart-service first, then order-service."
   exit 1
@@ -66,9 +75,9 @@ if [[ "$preflight_code" =~ ^2[0-9][0-9]$ ]]; then
 else
   echo "[sdd7][warn] cart-service preflight returned HTTP $preflight_code"
   echo "[sdd7][warn] Body:"
-  cat /tmp/sdd7-cart-internal-preflight.json || true
+  cat "$PREFLIGHT_FILE" || true
   echo
   echo "[sdd7][warn] Continuing because this is not an auth rejection."
 fi
 
-"$(dirname "$0")/e2e_render_checkout_saga_sdd7.sh"
+"$SCRIPT_DIR/e2e_render_checkout_saga_sdd7.sh"

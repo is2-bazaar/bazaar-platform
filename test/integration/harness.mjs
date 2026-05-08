@@ -7,10 +7,21 @@ const JOURNEYS_DIR = join(__dirname, 'journeys');
 
 const BASE_URL = process.env.LOCAL_API_BASE_URL || 'http://localhost:8080';
 
+const REQUIRED_VARS = {
+  JWT_SECRET: process.env.JWT_SECRET,
+  INTERNAL_SERVICE_TOKEN: process.env.INTERNAL_SERVICE_TOKEN,
+};
+
+for (const [name, value] of Object.entries(REQUIRED_VARS)) {
+  if (!value) {
+    throw new Error(`${name} is required. Set it in .env.local`);
+  }
+}
+
 export const config = {
   baseUrl: BASE_URL,
-  jwtSecret: process.env.JWT_SECRET || '',
-  internalToken: process.env.INTERNAL_SERVICE_TOKEN || '',
+  jwtSecret: REQUIRED_VARS.JWT_SECRET,
+  internalToken: REQUIRED_VARS.INTERNAL_SERVICE_TOKEN,
 };
 
 export function uniqueEmail() {
