@@ -20,8 +20,8 @@ export INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}"
 export CART_INTERNAL_SERVICE_TOKEN="${CART_INTERNAL_SERVICE_TOKEN:-$INTERNAL_SERVICE_TOKEN}"
 export PAYMENT_SIMULATION_MODE="approved"
 
-echo "[sdd7][local] Using local platform URLs"
-echo "[sdd7][local] API_BASE=$API_BASE"
-echo "[sdd7][local] ORDER_BASE=$ORDER_BASE"
+echo "[sdd7-sdd8-sdd9][local] Using local platform URLs"
+echo "[sdd7-sdd8-sdd9][local] API_BASE=$API_BASE"
+echo "[sdd7-sdd8-sdd9][local] ORDER_BASE=$ORDER_BASE"
 
 "$SCRIPT_DIR/e2e_render_checkout_saga_sdd7.sh"

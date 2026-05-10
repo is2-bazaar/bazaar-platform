@@ -44,7 +44,7 @@ export ADMIN_EMAIL="${ADMIN_EMAIL:-admin@bazaar.dev}"
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export PAYMENT_SIMULATION_MODE="approved"
 
-echo "[sdd7] Checking cart-service internal token..."
+echo "[sdd7-sdd8-sdd9][render] Checking cart-service internal token..."
 PREFLIGHT_FILE="$(mktemp)"
 preflight_code="$(curl -sS -o "$PREFLIGHT_FILE" -w '%{http_code}' \
   -X POST "$CART_BASE/internal/checkout-cleanup" \
@@ -54,11 +54,11 @@ preflight_code="$(curl -sS -o "$PREFLIGHT_FILE" -w '%{http_code}' \
   --data '{"buyer_id":999999999,"checkout_group_id":"11111111-1111-1111-1111-111111111111","items":[{"product_id":1,"quantity":1}]}')"
 
 if [[ "$preflight_code" == "401" || "$preflight_code" == "403" ]]; then
-  echo "[sdd7][error] cart-service rejected the internal token with HTTP $preflight_code"
-  echo "[sdd7][error] Response:"
+  echo "[sdd7-sdd8-sdd9][error] cart-service rejected the internal token with HTTP $preflight_code"
+  echo "[sdd7-sdd8-sdd9][error] Response:"
   cat "$PREFLIGHT_FILE"
   echo
-  echo "[sdd7][fix required in Render]"
+  echo "[sdd7-sdd8-sdd9][fix required in Render]"
   echo "In bazaar-backend-cart-service, add/update:"
   echo " INTERNAL_SERVICE_TOKEN=$INTERNAL_SERVICE_TOKEN"
   echo
@@ -71,13 +71,13 @@ if [[ "$preflight_code" == "401" || "$preflight_code" == "403" ]]; then
 fi
 
 if [[ "$preflight_code" =~ ^2[0-9][0-9]$ ]]; then
-  echo "[sdd7][ok] cart-service internal token accepted with HTTP $preflight_code"
+  echo "[sdd7-sdd8-sdd9][ok] cart-service internal token accepted with HTTP $preflight_code"
 else
-  echo "[sdd7][warn] cart-service preflight returned HTTP $preflight_code"
-  echo "[sdd7][warn] Body:"
+  echo "[sdd7-sdd8-sdd9][warn] cart-service preflight returned HTTP $preflight_code"
+  echo "[sdd7-sdd8-sdd9][warn] Body:"
   cat "$PREFLIGHT_FILE" || true
   echo
-  echo "[sdd7][warn] Continuing because this is not an auth rejection."
+  echo "[sdd7-sdd8-sdd9][warn] Continuing because this is not an auth rejection."
 fi
 
 "$SCRIPT_DIR/e2e_render_checkout_saga_sdd7.sh"
