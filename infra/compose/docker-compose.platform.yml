@@ -176,6 +176,7 @@ services:
       SERVICE_NAME: "payment-service"
       PORT: "8080"
       DEPENDENCY_TARGETS: "${PAYMENT_SERVICE_DEPENDENCY_TARGETS:-payment-db:5432}"
+      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE:-approved}"
       PAYMENT_DB_HOST: "${PAYMENT_DB_HOST:-payment-db}"
       PAYMENT_DB_PORT: "${PAYMENT_DB_PORT:-5432}"
       PAYMENT_DB_USER: "${PAYMENT_DB_USER:-postgres}"
