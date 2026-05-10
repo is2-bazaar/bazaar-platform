@@ -1,7 +1,7 @@
 workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual del codigo" {
 
     model {
-        user = person "Usuario" "Usa la app mobile para registrarse, iniciar sesion y recuperar password."
+        user = person "Usuario" "Usa la app mobile para registrarse, iniciar sesion y recuperar password. Navega catálogo y hace checkout."
         admin = person "Administrador" "Usa el backoffice para iniciar sesion administrativa."
 
         brevo = softwareSystem "Brevo" "Proveedor externo de email para recupero de password." {
@@ -30,7 +30,19 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
                 tags "Service"
             }
 
-            catalogService = container "Catalog Service" "Listado, detalle de productos y publicaciones del vendedor." "Go" {
+            catalogService = container "Catalog Service" "Listado, detalle de productos, publicaciones y gestion de stock (Saga)." "Go" {
+                tags "Service"
+            }
+            
+            cartService = container "Cart Service" "Carrito de compras e integracion de cleanup de checkout." "Go" {
+                tags "Service"
+            }
+            
+            orderService = container "Order Service" "Orquestador central del Checkout Saga y gestion de ordenes multi-vendedor." "Go" {
+                tags "Service"
+            }
+            
+            paymentService = container "Payment Service" "Pasarela de pagos y refund." "Go" {
                 tags "Service"
             }
 
@@ -42,28 +54,50 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
                 tags "Database"
             }
 
-            catalogDb = container "Catalog DB" "Productos, categorias y metadata de media." "PostgreSQL" {
+            catalogDb = container "Catalog DB" "Productos, categorias y metadata de media. Contiene locks de stock." "PostgreSQL" {
+                tags "Database"
+            }
+            
+            cartDb = container "Cart DB" "Carrito de usuarios (Items)." "PostgreSQL" {
+                tags "Database"
+            }
+            
+            orderDb = container "Order DB" "Grupos de Checkout, Ordenes por Seller." "PostgreSQL" {
+                tags "Database"
+            }
+            
+            paymentDb = container "Payment DB" "Transacciones e intentos de pago." "PostgreSQL" {
                 tags "Database"
             }
         }
 
-        user -> mobile "Usa registro, login y recupero de password"
+        user -> mobile "Usa registro, login, checkout y compras"
         admin -> backoffice "Hace login administrativo"
 
-        mobile -> gateway "Consume /auth/*" "HTTPS/JSON"
-        backoffice -> gateway "Consume /api/auth/login y /api/auth/refresh" "HTTPS/JSON"
+        mobile -> gateway "Consume APIs" "HTTPS/JSON"
+        backoffice -> gateway "Consume APIs" "HTTPS/JSON"
 
-        gateway -> authService "Proxy de /auth/*; aplica rate limiting por IP en endpoints sensibles" "HTTP/JSON"
-        gateway -> userService "Publica /users/*, /profiles/* y /admin/users/*" "HTTP/JSON"
-        gateway -> catalogService "Publica /catalog/*" "HTTP/JSON"
+        gateway -> authService "Proxy de /auth/*" "HTTP/JSON síncrono"
+        gateway -> userService "Publica /users/*, /profiles/* y /admin/users/*" "HTTP/JSON síncrono"
+        gateway -> catalogService "Publica /catalog/*" "HTTP/JSON síncrono"
+        gateway -> cartService "Publica /cart/*" "HTTP/JSON síncrono"
+        gateway -> orderService "Publica /checkout/* y /orders/*" "HTTP/JSON síncrono"
 
         authService -> authDb "Lee y escribe"
         authService -> brevo "Envia emails de recupero" "HTTPS/API"
 
         userService -> userDb "Lee y escribe"
-        userService -> authService "Consulta o actualiza estado de cuenta" "HTTP/JSON"
+        userService -> authService "Consulta o actualiza estado de cuenta" "HTTP/JSON síncrono (X-Internal-Service-Token)"
 
         catalogService -> catalogDb "Lee y escribe"
+        cartService -> cartDb "Lee y escribe"
+        paymentService -> paymentDb "Lee y escribe"
+        orderService -> orderDb "Lee y escribe"
+        
+        # Checkout Saga relationships
+        orderService -> cartService "Consulta carrito y ejecuta cleanup idempotente" "HTTP/JSON síncrono (X-Internal-Service-Token)"
+        orderService -> catalogService "Reserva, confirma o libera stock" "HTTP/JSON síncrono (X-Internal-Service-Token)"
+        orderService -> paymentService "Inicia y reembolsa pagos" "HTTP/JSON síncrono (X-Internal-Service-Token)"
     }
 
     views {

@@ -13,6 +13,12 @@ Thin wrapper para correr Bazaar en desarrollo local sin duplicar infraestructura
 
 No resuelve cloud, no contiene lógica de negocio y no es el owner de ningún deploy remoto. El deploy cloud queda para una etapa futura por repo separado.
 
+## Documentación y Arquitectura
+
+- [Documentación técnica de Checkout Saga](docs/architecture/checkout-saga.md): Explica la consistencia distribuida, idempotencia, reintentos y flujo multi-vendedor del Checkout.
+- [ADR 0008 - Checkout multi-vendedor](docs/adr/0008-checkout-multi-vendedor-consolidado.md)
+- [ADR 0009 - Checkout Saga Architecture](docs/adr/0009-checkout-saga-architecture.md)
+
 ## Diseño y prototipos
 
 Los prototipos de `bazaar-mobile` y `bazaar-backoffice` están disponibles en Figma:
