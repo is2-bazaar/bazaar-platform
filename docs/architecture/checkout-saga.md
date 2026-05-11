@@ -380,7 +380,7 @@ Protegidos por `X-Internal-Service-Token`. NO expuestos a través del API Gatewa
 
 ### Suite E2E principal
 
-El script `scripts/test/integration/e2e_render_checkout_saga_sdd7.sh` (1830 líneas) contiene la suite completa de tests E2E. Aunque el nombre conserva "sdd7" por historia, cubre SDD7, SDD8 y SDD9 en un solo script. Las suites están organizadas como funciones bash:
+El script `scripts/test/integration/_e2e_checkout.sh` contiene la suite completa de tests E2E. Aunque el nombre conserva "sdd7" por historia, cubre SDD7, SDD8 y SDD9 en un solo script. Las suites están organizadas como funciones bash:
 
 - **SDD7**: Cart internal cleanup (`sdd7_cart_cleanup_suite`)
 - **SDD8**: Seller order reconciliation + checkout privacy (`sdd8_seller_reconciliation_suite`, `sdd8_checkout_privacy_suite`)
@@ -390,12 +390,12 @@ El script `scripts/test/integration/e2e_render_checkout_saga_sdd7.sh` (1830 lín
 
 | Script | Propósito |
 |--------|-----------|
-| `scripts/test/integration/e2e_render_checkout_saga_sdd7.sh` | Suite E2E completa (SDD7+SDD8+SDD9). 1830 líneas |
-| `scripts/test/integration/run_sdd7_local_env.sh` | Wrapper para entorno local (Docker Compose) |
-| `scripts/test/integration/run_sdd7_render_real_env.sh` | Wrapper para entorno Render (producción). Incluye preflight de token interno a cart-service |
+| `scripts/test/integration/_e2e_checkout.sh` | Suite E2E completa (SDD7+SDD8+SDD9). Script interno llamado por los wrappers |
+| `scripts/test/integration/e2e_local.sh` | Wrapper para entorno local (Docker Compose) |
+| `scripts/test/integration/e2e_render.sh` | Wrapper para entorno Render (producción). Incluye preflight de token interno a cart-service |
 | `scripts/test/integration.sh` | Orquestador general de integration tests (levanta stack, espera readiness, ejecuta harness) |
 
-**No existen scripts separados `run_sdd8_local_env.sh` ni `run_sdd9_local_env.sh`.** Las suites SDD8 y SDD9 están embebidas dentro del script `e2e_render_checkout_saga_sdd7.sh`.
+**No existen scripts separados `sdd8` ni `sdd9`.** Las suites SDD8 y SDD9 están embebidas dentro del script `_e2e_checkout.sh`.
 
 ### Cómo ejecutar
 
@@ -403,14 +403,14 @@ El script `scripts/test/integration/e2e_render_checkout_saga_sdd7.sh` (1830 lín
 ```bash
 ./scripts/up.sh                                    # Levantar stack
 cd scripts/test/integration
-./run_sdd7_local_env.sh                            # Ejecutar suite completa
+./e2e_local.sh                                      # Ejecutar suite completa
 ```
 
 **Entorno Render**:
 ```bash
 cd scripts/test/integration
 # Requiere credenciales en .env.local o exportadas
-./run_sdd7_render_real_env.sh
+./e2e_render.sh
 ```
 
 ### Qué cubren los tests E2E

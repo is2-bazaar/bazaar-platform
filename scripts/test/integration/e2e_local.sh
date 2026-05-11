@@ -97,4 +97,4 @@ echo "[sdd7-sdd8-sdd9][local] Using local platform URLs"
 echo "[sdd7-sdd8-sdd9][local] API_BASE=$API_BASE"
 echo "[sdd7-sdd8-sdd9][local] ORDER_BASE=$ORDER_BASE"
 
-"$SCRIPT_DIR/e2e_render_checkout_saga_sdd7.sh"
+"$SCRIPT_DIR/_e2e_checkout.sh"
