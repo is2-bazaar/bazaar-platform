@@ -6,14 +6,14 @@ set -euo pipefail
 #
 # Objetivo:
 #   Validar SDD 7, SDD 8 y SDD 9 (local or Render), sin DB directa:
-#   - cart-service internal cleanup: POST /internal/checkout-cleanup
-#   - idempotencia por checkout_group_id
-#   - limpieza parcial por cantidad
-#   - hard delete + re-add seguro
-#   - cleanup integrado desde order-service luego de checkout approved
-#   - retry de checkout no vuelve a limpiar items re-agregados
-#   - SDD8: seller order list/detail + status transitions
-#   - SDD9: multi-seller checkout + seller isolation + admin read-only
+#   - SDD7: cart-service internal checkout cleanup, idempotencia de cleanup,
+#     limpieza por cantidades, hard delete + re-add seguro,
+#     cleanup integrado post-checkout, retry no borra items re-agregados.
+#   - SDD8: checkout reconciliation views via
+#     GET /checkout/attempts/:idempotencyKey y
+#     GET /checkout-groups/:checkoutGroupId.
+#   - SDD9: seller order list/detail/status, multi-seller isolation,
+#     seller privacy, admin read-only.
 #
 # Payment:
 #   Se asume PAYMENT_SIMULATION_MODE=approved en payment-service.
@@ -495,7 +495,8 @@ for o in orders:
             continue
         sid = item.get("seller_id") or item.get("sellerID") or item.get("SellerID")
         if sid is None:
-            continue
+            print("false")
+            sys.exit(0)
         if str(sid) != str(seller_id):
             print("false")
             sys.exit(0)
@@ -533,7 +534,8 @@ for item in items:
         continue
     sid = item.get("seller_id") or item.get("sellerID") or item.get("SellerID")
     if sid is None:
-        continue
+        print("true")
+        sys.exit(0)
     if str(sid) != str(seller_id):
         print("true")
         sys.exit(0)
