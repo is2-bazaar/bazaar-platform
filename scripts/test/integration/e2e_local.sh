@@ -27,4 +27,4 @@ echo "[e2e][local] Using local platform URLs"
 echo "[e2e][local] API_BASE=$API_BASE"
 echo "[e2e][local] ORDER_BASE=$ORDER_BASE"
 
-"$SCRIPT_DIR/_e2e_checkout.sh"
+"$SCRIPT_DIR/e2e_tests.sh"
