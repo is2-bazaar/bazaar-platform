@@ -24,7 +24,7 @@ El diseño del flujo de checkout busca garantizar los siguientes atributos de ca
 | Servicio | Responsabilidad | Endpoints Relevantes | Persistencia propia | Comunicación |
 |----------|-----------------|----------------------|---------------------|--------------|
 | **API Gateway** | Punto de entrada, ruteo, validación JWT, CORS, rate limiting | `POST /checkout`, `GET /checkout/attempts/:key`, `GET /checkout-groups/:id`, `GET /orders`, `GET /seller/orders`, `GET /admin/orders` | No | HTTP/JSON síncrono |
-| **order-service** | Orquestador de la Saga, gestión de órdenes y checkout groups | `POST /checkout`, `GET /checkout/attempts/:idempotencyKey`, `GET /checkout-groups/:checkoutGroupId`, `GET /orders`, `POST /orders/:orderId/cancel`, `POST /orders/:orderId/confirm-delivery`, `GET /seller/orders`, `POST /seller/orders/:orderId/status`, `GET /admin/orders` | PostgreSQL (checkout_groups, orders, order_items, order_status_histories) | HTTP/JSON hacia internos |
+| **order-service** | Orquestador de la Saga, gestión de órdenes y checkout groups | `POST /checkout`, `GET /checkout/attempts/:idempotencyKey`, `GET /checkout-groups/:checkoutGroupId`, `GET /orders`, `POST /orders/:orderId/cancel`, `POST /orders/:orderId/confirm-delivery`, `GET /seller/orders`, `POST /seller/orders/:orderId/status`, `GET /admin/orders` | PostgreSQL (checkout_groups, orders, order_items, order_status_histories) | Públicas: JWT via Gateway. `/internal`: JWT admin (Bearer). Hacia otros servicios: `X-Internal-Service-Token` |
 | **catalog-service** | Manejo de stock y validación de productos | `POST /internal/stock/reservations`, `POST /internal/stock/reservations/:checkoutGroupId/confirm`, `POST /internal/stock/reservations/:checkoutGroupId/release` | PostgreSQL (products, stock_reservations, stock_reservation_items) | HTTP/JSON interna, `X-Internal-Service-Token` |
 | **payment-service** | Pasarela de pagos idempotente con modo simulado | `POST /internal/payments`, `POST /internal/payments/:paymentId/refund` | PostgreSQL (payments) | HTTP/JSON interna, `X-Internal-Service-Token` |
 | **cart-service** | Gestión del carrito y limpieza selectiva post-checkout | `POST /internal/checkout-cleanup` | PostgreSQL (carts, cart_items, cart_cleanup_operations) | HTTP/JSON interna, `X-Internal-Service-Token` |
@@ -246,14 +246,14 @@ Ruteados a través del API Gateway (`Bazaar-backend-api-gateway`). El gateway va
 
 | Método | Path | Actor | Propósito | Estado |
 |--------|------|-------|-----------|--------|
-| `POST` | `/checkout` | Buyer, Admin | Iniciar proceso de checkout | **Implementado** |
-| `POST` | `/checkout/quote` | Buyer, Admin | Cotización previa de compra | **Stub (501)** |
-| `GET` | `/checkout/attempts/:idempotencyKey` | Buyer, Admin | Reconciliación por idempotency key | **Implementado** |
+| `POST` | `/checkout` | Buyer | Iniciar proceso de checkout | **Implementado** |
+| `POST` | `/checkout/quote` | Buyer | Cotización previa de compra | **Stub (501)** |
+| `GET` | `/checkout/attempts/:idempotencyKey` | Buyer | Reconciliación por idempotency key | **Implementado** |
 | `GET` | `/checkout-groups/:checkoutGroupId` | Buyer, Admin | Detalle consolidado de compra con progreso de saga | **Implementado** |
-| `GET` | `/orders` | Buyer, Admin | Historial de compras del buyer autenticado | **Implementado** (paginado, sin filtro por status) |
-| `GET` | `/orders/:orderId` | Buyer, Admin | Detalle de una orden con items y status history | **Implementado** |
-| `POST` | `/orders/:orderId/cancel` | Buyer, Admin | Cancelar orden (`confirmada` o `en preparación`). Dispara refund si tiene payment | **Implementado** |
-| `POST` | `/orders/:orderId/confirm-delivery` | Buyer, Admin | Confirmar entrega (transición a `entregada`) | **Implementado** |
+| `GET` | `/orders` | Buyer | Historial de compras del buyer autenticado | **Implementado** (paginado, sin filtro por status) |
+| `GET` | `/orders/:orderId` | Buyer | Detalle de una orden con items y status history | **Implementado** |
+| `POST` | `/orders/:orderId/cancel` | Buyer | Cancelar orden (`confirmada` o `en preparación`). Dispara refund si tiene payment | **Implementado** |
+| `POST` | `/orders/:orderId/confirm-delivery` | Buyer | Confirmar entrega (transición a `entregada`) | **Implementado** |
 | `GET` | `/seller/orders` | Seller | Historial de ventas del seller autenticado | **Implementado** (paginado, con filtro por status) |
 | `GET` | `/seller/orders/:orderId` | Seller | Detalle de venta con items y dirección de entrega | **Implementado** |
 | `POST` | `/seller/orders/:orderId/status` | Seller | Avanzar estado (`en preparación` → `enviada`). Acepta `tracking_code` | **Implementado** |

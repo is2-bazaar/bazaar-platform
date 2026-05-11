@@ -168,8 +168,8 @@ Creates a single payment intent for the entire checkout group.
 | Auth | `X-Internal-Service-Token` |
 | Idempotency-Key | `payment-{checkout_group_id}` |
 | Request Body | `PaymentCreateRequest` |
-| Success Response | `200 OK` — `PaymentCreateResponse` |
-| Error Response | `402 Payment Required` / `4xx` |
+| Success Response | `201 Created` — `PaymentCreateResponse` (status: `approved`, `rejected`, or `pending`) |
+| Error Response | `4xx` / `5xx` |
 
 Request body:
 
