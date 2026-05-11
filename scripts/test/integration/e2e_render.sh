@@ -13,6 +13,45 @@ cleanup() {
 
 trap cleanup EXIT
 
+###############################################################################
+# SAFETY GATE: Render E2E protection
+#
+# Running E2E tests against Render creates real data in production-like DBs.
+# This guard requires explicit confirmation before proceeding.
+###############################################################################
+
+ALLOW_RENDER_E2E="${ALLOW_RENDER_E2E:-}"
+REQUIRED_RENDER_CONFIRMATION="I_UNDERSTAND_THIS_WRITES_TO_RENDER"
+
+if [[ "$ALLOW_RENDER_E2E" != "$REQUIRED_RENDER_CONFIRMATION" ]]; then
+  cat <<BANNER
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                                                                          ║
+║  WARNING: This script writes to Render production-like databases.        ║
+║                                                                          ║
+║  It will CREATE real users, products, carts, orders, and payments.       ║
+║  These are E2E test artifacts with @test.local emails and SDD7/SDD9      ║
+║  product names, but they pollute the shared Render databases.            ║
+║                                                                          ║
+║  Consider running against local instead:                                 ║
+║    ./scripts/test/integration/e2e_local.sh                               ║
+║                                                                          ║
+║  If you truly need to run against Render, set:                           ║
+║    export ALLOW_RENDER_E2E="I_UNDERSTAND_THIS_WRITES_TO_RENDER"          ║
+║                                                                          ║
+║  After running, clean up with:                                           ║
+║    ./scripts/maintenance/cleanup_e2e_dry_run.sh                          ║
+║    ./scripts/maintenance/cleanup_e2e_apply.sh                            ║
+║                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+BANNER
+  exit 1
+fi
+
+echo "[e2e][render] Render E2E confirmation accepted. Proceeding..."
+
 # Load local env vars if present
 # shellcheck disable=SC1091
 if [[ -f "$PLATFORM_ROOT/.env.local" ]]; then

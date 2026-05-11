@@ -1,4 +1,5 @@
 .env.local
+.env.cleanup
 *.log
 .expo
 .qwen
@@ -6,3 +7,4 @@
 tmp/
 tmp
 .atl
+.env.cleanup
