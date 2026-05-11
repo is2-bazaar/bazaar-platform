@@ -34,13 +34,29 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLATFORM_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-API_BASE="${API_BASE:-https://bazaar-backend-api-gateway.onrender.com}"
-AUTH_BASE="${AUTH_BASE:-https://bazaar-backend-auth-service.onrender.com}"
-USER_BASE="${USER_BASE:-https://bazaar-backend-user-service.onrender.com}"
-CATALOG_BASE="${CATALOG_BASE:-https://bazaar-backend-catalog-service.onrender.com}"
-CART_BASE="${CART_BASE:-https://bazaar-backend-cart-service.onrender.com}"
-ORDER_BASE="${ORDER_BASE:-https://bazaar-backend-order-service.onrender.com}"
-PAYMENT_BASE="${PAYMENT_BASE:-https://bazaar-backend-payment-service.onrender.com}"
+# ── Safety: Default to local if E2E_TARGET_ENV is not explicitly set ──────
+if [[ -z "${E2E_TARGET_ENV:-}" ]]; then
+  cat <<BANNER
+╔══════════════════════════════════════════════════════════════════════════╗
+║  _e2e_checkout.sh requires E2E_TARGET_ENV to be set explicitly.          ║
+║                                                                          ║
+║  Use e2e_local.sh or e2e_render.sh wrappers, or set manually:           ║
+║    export E2E_TARGET_ENV=local                                           ║
+║                                                                          ║
+║  Running directly without E2E_TARGET_ENV is not supported anymore        ║
+║  to prevent accidental writes to Render.                                 ║
+╚══════════════════════════════════════════════════════════════════════════╝
+BANNER
+  exit 1
+fi
+
+API_BASE="${API_BASE:-http://localhost:8080}"
+AUTH_BASE="${AUTH_BASE:-http://localhost:${AUTH_SERVICE_HOST_PORT:-18081}}"
+USER_BASE="${USER_BASE:-http://localhost:${USER_SERVICE_HOST_PORT:-18082}}"
+CATALOG_BASE="${CATALOG_BASE:-http://localhost:${CATALOG_SERVICE_HOST_PORT:-18083}}"
+CART_BASE="${CART_BASE:-http://localhost:${CART_SERVICE_HOST_PORT:-18085}}"
+ORDER_BASE="${ORDER_BASE:-http://localhost:${ORDER_SERVICE_HOST_PORT:-18086}}"
+PAYMENT_BASE="${PAYMENT_BASE:-http://localhost:${PAYMENT_SERVICE_HOST_PORT:-18084}}"
 
 # Load local env vars if present
 # shellcheck disable=SC1091
