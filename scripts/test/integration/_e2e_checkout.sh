@@ -92,8 +92,8 @@ except Exception:
 
     # Fallback: unquoted JS-object format (e.g. {email:admin@...,password:Xxx})
     if [[ -z "$email" || -z "$password" ]]; then
-      email="$(echo "$stripped_value" | grep -oE 'email:([^,}]+)' | head -1 | sed 's/^email://')"
-      password="$(echo "$stripped_value" | grep -oE 'password:([^,}]+)' | head -1 | sed 's/^password://')"
+      email="$(echo "$stripped_value" | grep -oE 'email:[[:space:]]*([^,[:space:]}]+)' | head -1 | sed -E 's/^email:[[:space:]]*//')"
+      password="$(echo "$stripped_value" | grep -oE 'password:[[:space:]]*([^,[:space:]}]+)' | head -1 | sed -E 's/^password:[[:space:]]*//')"
     fi
 
     if [[ -n "$email" && -n "$password" ]]; then
