@@ -1777,6 +1777,25 @@ admin_smoke_suite() {
     code="$(req admin-checkout-block POST "$API_BASE/checkout" '{"delivery_address":"Admin E2E","delivery_city":"CABA"}' "$(auth_h "$admin")" "Idempotency-Key: admin-checkout-$RUN_ID" "Content-Type: application/json")"
     assert_forbidden_or_hidden "$code" "SDD9 admin cannot use checkout endpoint"
   fi
+
+  # ── Admin read-only: cannot cancel orders ──
+  local admin_test_order="${sdd9_order_a:-$order_id}"
+  if [[ -n "$admin_test_order" ]]; then
+    code="$(req admin-cancel-block POST "$API_BASE/orders/$admin_test_order/cancel" "" "$(auth_h "$admin")")"
+    assert_forbidden_or_hidden "$code" "SDD9 admin cannot cancel order"
+
+    code="$(req admin-confirm-delivery-block POST "$API_BASE/orders/$admin_test_order/confirm-delivery" "" "$(auth_h "$admin")")"
+    assert_forbidden_or_hidden "$code" "SDD9 admin cannot confirm delivery"
+  fi
+
+  # ── Admin read-only: cannot use buyer GET endpoints ──
+  code="$(req admin-get-orders-block GET "$API_BASE/orders/" "" "$(auth_h "$admin")")"
+  assert_forbidden_or_hidden "$code" "SDD9 admin cannot list buyer orders"
+
+  if [[ -n "$admin_test_order" ]]; then
+    code="$(req admin-get-order-block GET "$API_BASE/orders/$admin_test_order" "" "$(auth_h "$admin")")"
+    assert_forbidden_or_hidden "$code" "SDD9 admin cannot get buyer order detail"
+  fi
 }
 
 ###############################################################################

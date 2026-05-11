@@ -81,7 +81,8 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
         gateway -> userService "Publica /users/*, /profiles/* y /admin/users/*" "HTTP/JSON síncrono"
         gateway -> catalogService "Publica /catalog/*" "HTTP/JSON síncrono"
         gateway -> cartService "Publica /cart/*" "HTTP/JSON síncrono"
-        gateway -> orderService "Publica /checkout/* y /orders/*" "HTTP/JSON síncrono"
+        gateway -> orderService "Publica /checkout/*, /orders/*, /admin/orders/* y /seller/*" "HTTP/JSON síncrono"
+        gateway -> paymentService "Publica /payments/* para consulta autenticada de pagos (user-only)" "HTTP/JSON síncrono"
 
         authService -> authDb "Lee y escribe"
         authService -> brevo "Envia emails de recupero" "HTTPS/API"

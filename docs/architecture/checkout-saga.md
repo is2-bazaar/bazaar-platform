@@ -161,7 +161,7 @@ Si el cliente pierde conexión (timeout del API Gateway, app se cierra, pantalla
 - **`GET /checkout/attempts/:idempotencyKey`**: Busca el `CheckoutGroup` por `(buyer_id, idempotency_key)`. No dispara side effects. Retorna el estado actual del grupo y sus órdenes hijas. Útil cuando el frontend conservó la key pero no recibió respuesta.
 - **`GET /checkout-groups/:checkoutGroupId`**: Busca por `checkout_group_id`. Ownership restringido: solo el buyer dueño o admin pueden acceder. Retorna detalle completo incluyendo campos de progreso de saga (`payment_status`, `stock_reservation_status`, `stock_confirmation_status`, `orders_confirmation_status`, `cart_cleanup_status`). Útil cuando el frontend llegó a recibir el `checkout_group_id` pero perdió la respuesta completa.
 
-Ambos endpoints aplican privacy hardening de SDD9: un buyer ajeno recibe 404. Campos internos (`last_error`, etc.) se incluyen solo para el dueño/admin.
+Ambos endpoints aplican privacy hardening de SDD9: un buyer ajeno recibe 404. Campos internos (`idempotency_key`, `last_error`, `cart_cleanup_status`, `stock_reservation_id`, tokens internos) NO se exponen en el DTO público bajo ningún rol — ni para el dueño ni para admin. El contrato público de `CheckoutGroupResponse` incluye únicamente: `id`, `buyer_id`, `status`, `grand_total`, `payment_status`, `stock_reservation_status`, `stock_confirmation_status`, `orders_confirmation_status`, `orders[]`, `message` (opcional).
 
 ## Estados de entidades
 
@@ -239,6 +239,10 @@ Implementado en `order-service/internal/service/order_service.go` y `order-servi
 - **Seller no ve órdenes hermanas**: `GetCheckoutGroup` está restringido a buyer (dueño) o admin. Un seller no puede consultar el `CheckoutGroup` y por tanto no puede enumerar órdenes de otros vendedores dentro del mismo grupo.
 - **Admin**: Rutas separadas bajo `/admin/orders` con middleware `RequireRole("admin")`. El admin tiene acceso de solo lectura a todas las órdenes y checkout groups. No puede mutar estados de órdenes (no tiene acceso a `POST /seller/orders/:id/status`).
 - **Recursos ajenos ocultos como 404**: Los errores de autorización se mapean a `404 Not Found` en lugar de `403 Forbidden` para evitar enumeración de recursos.
+- **Regla general 403 vs 404**:
+  - **Rol incorrecto / middleware bloquea** (ej: admin accediendo a `/seller/orders`, buyer accediendo a `/admin/orders`) → **403 Forbidden**. El middleware de rol rechaza antes de llegar al handler.
+  - **Rol válido pero recurso ajeno** (ej: seller A accediendo a orden de seller B, buyer accediendo a orden de otro buyer) → **404 Not Found**. El handler verifica ownership y oculta el recurso.
+  - Esta distinción es deliberada: 403 = "no tenés permiso para usar este endpoint", 404 = "ese recurso no existe o no es tuyo".
 
 ## Endpoints públicos
 

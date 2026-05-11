@@ -43,7 +43,9 @@ _resolve_admin_creds() {
     exit 1
   fi
 
-  # Extract AUTH_BOOTSTRAP_ADMINS JSON from auth env file
+  # Extract AUTH_BOOTSTRAP_ADMINS JSON from auth env file.
+  # Render and some local setups may wrap the value in external quotes (single or double).
+  # We strip those before passing to Python's json.loads.
   local bootstrap_value
   bootstrap_value="$(grep -E '^AUTH_BOOTSTRAP_ADMINS=' "$auth_env_file" | head -1 | sed 's/^AUTH_BOOTSTRAP_ADMINS=//')"
 
@@ -52,16 +54,27 @@ _resolve_admin_creds() {
     exit 1
   fi
 
+  # Strip external quotes if present (e.g. '[...]' or "[...]")
+  local stripped_value="$bootstrap_value"
+  if [[ "$stripped_value" == \'*\' ]]; then
+    stripped_value="${stripped_value#\'}"
+    stripped_value="${stripped_value%\'}"
+  elif [[ "$stripped_value" == \"*\" ]]; then
+    stripped_value="${stripped_value#\"}"
+    stripped_value="${stripped_value%\"}"
+  fi
+
   # Parse the first admin entry: email + password
+  # Uses stripped_value (external quotes already removed) for safe JSON parsing.
   local email password
-  email="$(echo "$bootstrap_value" | python3 -c "
+  email="$(echo "$stripped_value" | python3 -c "
 import json, sys
 data = json.loads(sys.stdin.read())
 if isinstance(data, list) and len(data) > 0:
     print(data[0].get('email', ''))
 " 2>/dev/null)"
 
-  password="$(echo "$bootstrap_value" | python3 -c "
+  password="$(echo "$stripped_value" | python3 -c "
 import json, sys
 data = json.loads(sys.stdin.read())
 if isinstance(data, list) and len(data) > 0:
