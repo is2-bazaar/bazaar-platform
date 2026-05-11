@@ -167,13 +167,15 @@ build_seed_product_where() {
   local batch="$1"
   local prefix
   prefix="$(escape_like "RENDER_SEED_PRODUCT")"
+  local pattern
   if [[ -n "$batch" ]]; then
     local escaped_batch
     escaped_batch="$(escape_like "$batch")"
-    echo "name LIKE '${prefix}\\_${escaped_batch}\\_%'"
+    pattern="${prefix}\\_${escaped_batch}\\_%"
   else
-    echo "name LIKE '${prefix}\\_%'"
+    pattern="${prefix}\\_%"
   fi
+  echo "name LIKE '$(sql_escape "$pattern")'"
 }
 
 # ── Confirmation helpers ─────────────────────────────────────────────────────

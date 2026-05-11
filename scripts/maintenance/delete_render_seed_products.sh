@@ -82,8 +82,7 @@ main() {
 
   local total
   total="$(psql "$CATALOG_DB_URL" -t -A -c \
-    "SELECT COUNT(*) FROM products WHERE $where_clause;" \
-    2>/dev/null || echo "0")"
+    "SELECT COUNT(*) FROM products WHERE $where_clause;")"
   total="${total//[[:space:]]/}"
   total="${total:-0}"
 
@@ -184,8 +183,7 @@ main() {
 
   local remaining
   remaining="$(psql "$CATALOG_DB_URL" -t -A -c \
-    "SELECT COUNT(*) FROM products WHERE $where_clause;" \
-    2>/dev/null || echo "?")"
+    "SELECT COUNT(*) FROM products WHERE $where_clause;")"
   remaining="${remaining//[[:space:]]/}"
   remaining="${remaining:-?}"
 
