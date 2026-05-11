@@ -51,7 +51,8 @@ case_32_buyer_orders_history() {
     record PASS "buyer orders list count" "count=$([[ -n "$count" ]] && echo "$count" || echo "unknown")"
 
     # Check field presence in response
-    assert_json_field_present "$body_file" "order_id" "buyer orders list has order_id"
+    # API returns 'id' for order identifier; check both 'id' and 'order_id'
+    assert_json_field_present_any "$body_file" "id order_id" "buyer orders list has id"
     assert_json_field_present "$body_file" "status" "buyer orders list has status"
     assert_json_field_present "$body_file" "total" "buyer orders list has total"
     assert_json_field_present "$body_file" "created_at" "buyer orders list has created_at"
@@ -100,7 +101,7 @@ case_32_buyer_orders_history() {
       record PASS "buyer order detail shape check" "HTTP $code order=$order_id_a"
 
       local detail_file="$HTTP_DIR/buyer-order-sdd9-buyer-detail-a.json"
-      assert_json_field_present "$detail_file" "order_id" "buyer order detail has order_id"
+      assert_json_field_present_any "$detail_file" "id order_id" "buyer order detail has id"
       assert_json_field_present "$detail_file" "status" "buyer order detail has status"
       assert_json_field_present "$detail_file" "total" "buyer order detail has total"
       assert_json_field_present "$detail_file" "items" "buyer order detail has items"

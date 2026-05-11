@@ -125,6 +125,25 @@ assert_json_field_present() {
   fi
 }
 
+# assert_json_field_present_any — check if ANY of the space-separated fields exist
+assert_json_field_present_any() {
+  local file="$1"
+  local fields="$2"
+  local case_name="$3"
+  local matched=""
+  for field in $fields; do
+    if [[ "$(json_field_exists "$file" "$field")" == "true" ]]; then
+      matched="$field"
+      break
+    fi
+  done
+  if [[ -n "$matched" ]]; then
+    record PASS "$case_name" "field '$matched' present"
+  else
+    record FAIL "$case_name" "none of [$fields] present"
+  fi
+}
+
 # assert_order_status — verify order status matches expected value
 assert_order_status() {
   local file="$1"

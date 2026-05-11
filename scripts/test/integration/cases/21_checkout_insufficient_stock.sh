@@ -20,15 +20,25 @@ source "$LIB_DIR/e2e_checkout.sh"
 case_21_checkout_insufficient_stock() {
   blue "--- 21_checkout_insufficient_stock ---"
 
-  local seller_direct buyer_direct seller_checkout buyer_checkout
+  local seller_direct buyer_direct seller_checkout buyer_checkout buyer_direct_id
   seller_direct="$(state_get seller_direct_token)"
   buyer_direct="$(state_get buyer_direct_token)"
+  buyer_direct_id="$(state_get buyer_direct_id)"
   seller_checkout="$(state_get seller_checkout_token)"
   buyer_checkout="$(state_get buyer_checkout_token)"
 
   if [[ -z "$seller_direct" || -z "$buyer_direct" ]]; then
     record SKIP "checkout insufficient stock" "missing seller_direct or buyer_direct tokens from case 01"
     return 0
+  fi
+
+  # Clean stale cart items left by case 10 (cart_cleanup leaves buyer_direct's cart dirty)
+  local stale_partial stale_full
+  stale_partial="$(state_get SDD7_DIRECT_PARTIAL_ID)"
+  stale_full="$(state_get SDD7_DIRECT_FULL_ID)"
+  if [[ -n "$buyer_direct_id" && -n "$stale_partial" ]]; then
+    internal_cart_cleanup insuff-clean-buyer-direct "$buyer_direct_id" "$(new_uuid)" \
+      "[{\"product_id\":$stale_partial,\"quantity\":99},{\"product_id\":$stale_full,\"quantity\":99}]" >/dev/null
   fi
 
   # Create a product with stock=1
