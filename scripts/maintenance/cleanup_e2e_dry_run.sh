@@ -462,6 +462,13 @@ collect_e2e_ids_connected() {
     run_psql "$catalog_url" \
       "SELECT id FROM idempotency_keys WHERE key LIKE 'product-SDD7_%' OR key LIKE 'product-SDD9_%' OR key LIKE 'sdd7-%' OR key LIKE 'sdd9-%' OR key LIKE 'admin-checkout-%' ORDER BY id;" \
       "$RUN_DIR/ids/catalog_e2e_idempotency_ids.csv"
+
+    extract_ids_from_psql_output "$RUN_DIR/ids/catalog_e2e_idempotency_ids.csv" 1 \
+      > "$RUN_DIR/ids/e2e_idempotency_ids.txt"
+
+    local idem_count
+    idem_count=$(wc -l < "$RUN_DIR/ids/e2e_idempotency_ids.txt" | tr -d ' ')
+    log_info "Found $idem_count E2E idempotency keys in catalog DB"
   fi
 
   # Phase 3: Order — collect E2E checkout group IDs and order IDs

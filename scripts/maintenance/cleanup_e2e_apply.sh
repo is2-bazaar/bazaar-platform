@@ -143,29 +143,29 @@ delete_order_db() {
 
   log_step "Order DB — Backup + Delete"
 
-  # Backup phase
+  # Backup phase — abort if any backup fails
   if [[ -n "$cg_ins" ]]; then
     backup_table "$url" "order_status_histories" \
       "order_id::text IN (SELECT id::text FROM orders WHERE checkout_group_id::text IN ($cg_ins))" \
-      "$order_backup/order_status_histories.csv" || true
+      "$order_backup/order_status_histories.csv" || { log_error "Backup failed for order_status_histories. Aborting."; exit 1; }
 
     backup_table "$url" "order_items" \
       "order_id::text IN (SELECT id::text FROM orders WHERE checkout_group_id::text IN ($cg_ins))" \
-      "$order_backup/order_items.csv" || true
+      "$order_backup/order_items.csv" || { log_error "Backup failed for order_items. Aborting."; exit 1; }
 
     backup_table "$url" "orders" \
       "checkout_group_id::text IN ($cg_ins)" \
-      "$order_backup/orders.csv" || true
+      "$order_backup/orders.csv" || { log_error "Backup failed for orders. Aborting."; exit 1; }
 
     backup_table "$url" "checkout_groups" \
       "id::text IN ($cg_ins)" \
-      "$order_backup/checkout_groups.csv" || true
+      "$order_backup/checkout_groups.csv" || { log_error "Backup failed for checkout_groups. Aborting."; exit 1; }
   fi
 
   if [[ -n "$user_ins" && -z "$cg_ins" ]]; then
     backup_table "$url" "orders" \
       "buyer_id IN ($user_ins) OR seller_id IN ($user_ins)" \
-      "$order_backup/orders_by_user.csv" || true
+      "$order_backup/orders_by_user.csv" || { log_error "Backup failed for orders (by user). Aborting."; exit 1; }
   fi
 
   # Delete phase (in dependency order)
@@ -224,7 +224,7 @@ delete_payment_db() {
   if [[ -n "$cg_ins" ]]; then
     backup_table "$url" "payments" \
       "checkout_group_id::text IN ($cg_ins) OR idempotency_key LIKE 'payment-%'" \
-      "$backup/payments.csv" || true
+      "$backup/payments.csv" || { log_error "Backup failed for payments. Aborting."; exit 1; }
 
     log_info "Deleting payments..."
     run_psql_delete "$url" \
@@ -252,7 +252,7 @@ delete_cart_db() {
   if [[ -n "$cg_ins" ]]; then
     backup_table "$url" "cart_cleanup_operations" \
       "checkout_group_id IN ($cg_ins)" \
-      "$backup/cart_cleanup_operations.csv" || true
+      "$backup/cart_cleanup_operations.csv" || { log_error "Backup failed for cart_cleanup_operations. Aborting."; exit 1; }
 
     log_info "Deleting cart_cleanup_operations..."
     run_psql_delete "$url" \
@@ -265,7 +265,7 @@ delete_cart_db() {
     # cart_items first (FK to carts)
     backup_table "$url" "cart_items" \
       "cart_id IN (SELECT id FROM carts WHERE user_id IN ($user_ins))" \
-      "$backup/cart_items.csv" || true
+      "$backup/cart_items.csv" || { log_error "Backup failed for cart_items. Aborting."; exit 1; }
 
     log_info "Deleting cart_items..."
     run_psql_delete "$url" \
@@ -276,7 +276,7 @@ delete_cart_db() {
     # Then carts
     backup_table "$url" "carts" \
       "user_id IN ($user_ins)" \
-      "$backup/carts.csv" || true
+      "$backup/carts.csv" || { log_error "Backup failed for carts. Aborting."; exit 1; }
 
     log_info "Deleting carts..."
     run_psql_delete "$url" \
@@ -301,11 +301,11 @@ delete_catalog_db() {
   if [[ -n "$cg_ins" ]]; then
     backup_table "$url" "stock_reservation_items" \
       "reservation_id IN (SELECT id FROM stock_reservations WHERE checkout_group_id::text IN ($cg_ins))" \
-      "$backup/stock_reservation_items.csv" || true
+      "$backup/stock_reservation_items.csv" || { log_error "Backup failed for stock_reservation_items. Aborting."; exit 1; }
 
     backup_table "$url" "stock_reservations" \
       "checkout_group_id::text IN ($cg_ins)" \
-      "$backup/stock_reservations.csv" || true
+      "$backup/stock_reservations.csv" || { log_error "Backup failed for stock_reservations. Aborting."; exit 1; }
 
     log_info "Deleting stock_reservation_items..."
     run_psql_delete "$url" \
@@ -320,17 +320,39 @@ delete_catalog_db() {
     log_info "  -> Deleted rows from stock_reservations"
   fi
 
-  # E2E Idempotency keys
+  # E2E Idempotency keys (prefer collected IDs, fallback to pattern)
+  local e2e_idem="$IDS_DIR/e2e_idempotency_ids.txt"
+  local idem_where="key LIKE 'product-SDD7_%' OR key LIKE 'product-SDD9_%' OR key LIKE 'sdd7-%' OR key LIKE 'sdd9-%' OR key LIKE 'admin-checkout-%'"
+  local idem_ins=""
+  idem_ins=$(build_in_clause_int "$e2e_idem")
+  if [[ -n "$idem_ins" ]]; then
+    idem_where="id IN ($idem_ins)"
+  fi
+
+  backup_table "$url" "idempotency_keys" "$idem_where" \
+    "$backup/idempotency_keys.csv" || { log_error "Backup failed for idempotency_keys. Aborting."; exit 1; }
+
   log_info "Deleting E2E idempotency_keys..."
   run_psql_delete "$url" \
-    "DELETE FROM idempotency_keys WHERE key LIKE 'product-SDD7_%' OR key LIKE 'product-SDD9_%' OR key LIKE 'sdd7-%' OR key LIKE 'sdd9-%' OR key LIKE 'admin-checkout-%';" \
+    "DELETE FROM idempotency_keys WHERE $idem_where;" \
     "catalog_delete_idempotency"
   log_info "  -> Deleted rows from idempotency_keys"
 
-  # E2E Products
+  # E2E Products (prefer collected IDs, fallback to pattern)
+  local e2e_products="$IDS_DIR/e2e_product_ids.txt"
+  local product_where="name LIKE 'SDD7_%' OR name LIKE 'SDD9_%' OR description LIKE 'E2E SDD7-SDD8-SDD9 product %'"
+  local product_ins=""
+  product_ins=$(build_in_clause_int "$e2e_products")
+  if [[ -n "$product_ins" ]]; then
+    product_where="id IN ($product_ins)"
+  fi
+
+  backup_table "$url" "products" "$product_where" \
+    "$backup/products.csv" || { log_error "Backup failed for products. Aborting."; exit 1; }
+
   log_info "Deleting E2E products..."
   run_psql_delete "$url" \
-    "DELETE FROM products WHERE name LIKE 'SDD7_%' OR name LIKE 'SDD9_%' OR description LIKE 'E2E SDD7-SDD8-SDD9 product %';" \
+    "DELETE FROM products WHERE $product_where;" \
     "catalog_delete_products"
   log_info "  -> Deleted rows from products"
 }
@@ -340,11 +362,23 @@ delete_user_db() {
   local backup="$RUN_DIR/backup"
   mkdir -p "$backup"
 
+  local e2e_users="$IDS_DIR/e2e_user_ids.txt"
+  local user_ins=""
+  user_ins=$(build_in_clause_int "$e2e_users")
+
   log_step "User DB — Backup + Delete"
+
+  local profile_where="full_name LIKE 'E2E %'"
+  if [[ -n "$user_ins" ]]; then
+    profile_where="auth_account_id IN ($user_ins)"
+  fi
+
+  backup_table "$url" "profiles" "$profile_where" \
+    "$backup/profiles.csv" || { log_error "Backup failed for profiles. Aborting."; exit 1; }
 
   log_info "Deleting E2E profiles..."
   run_psql_delete "$url" \
-    "DELETE FROM profiles WHERE full_name LIKE 'E2E %';" \
+    "DELETE FROM profiles WHERE $profile_where;" \
     "user_delete_profiles"
   log_info "  -> Deleted rows from profiles"
 }
@@ -368,17 +402,17 @@ delete_auth_db() {
   # Sessions first (FK to auth_accounts)
   backup_table "$url" "auth_sessions" \
     "account_id IN (SELECT id FROM auth_accounts WHERE $user_where)" \
-    "$backup/auth_sessions.csv" || true
+    "$backup/auth_sessions.csv" || { log_error "Backup failed for auth_sessions. Aborting."; exit 1; }
 
   # Password reset codes
   backup_table "$url" "auth_password_reset_codes" \
     "account_id IN (SELECT id FROM auth_accounts WHERE $user_where)" \
-    "$backup/auth_password_reset_codes.csv" || true
+    "$backup/auth_password_reset_codes.csv" || { log_error "Backup failed for auth_password_reset_codes. Aborting."; exit 1; }
 
   # Users
   backup_table "$url" "auth_accounts" \
     "$user_where" \
-    "$backup/auth_accounts.csv" || true
+    "$backup/auth_accounts.csv" || { log_error "Backup failed for auth_accounts. Aborting."; exit 1; }
 
   log_info "Deleting auth_sessions..."
   run_psql_delete "$url" \
