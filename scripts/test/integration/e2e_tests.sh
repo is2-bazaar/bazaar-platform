@@ -40,49 +40,75 @@ if [[ "$E2E_TARGET_ENV" == "render" ]]; then
   echo "⚠️  WARNING: Running against Render. This creates real data."
 fi
 
-# Define case order and their function names
-declare -A CASES=(
-  ["00_readiness"]="case_00_readiness"
-  ["01_auth_catalog_setup"]="case_01_auth_catalog_setup"
-  ["10_cart_cleanup"]="case_10_cart_cleanup"
-  ["20_checkout_approved"]="case_20_checkout_approved"
-  ["21_checkout_insufficient_stock"]="case_21_checkout_insufficient_stock"
-  ["22_checkout_idempotency"]="case_22_checkout_idempotency"
-  ["23_checkout_reconciliation_privacy"]="case_23_checkout_reconciliation_privacy"
-  ["30_seller_orders"]="case_30_seller_orders"
-  ["31_seller_order_status"]="case_31_seller_order_status"
-  ["32_buyer_orders_history"]="case_32_buyer_orders_history"
-  ["40_cancel_order_buyer"]="case_40_cancel_order_buyer"
-  ["41_cancel_order_seller"]="case_41_cancel_order_seller"
-  ["42_cancel_order_privacy"]="case_42_cancel_order_privacy"
-  ["43_cancel_order_idempotency"]="case_43_cancel_order_idempotency"
-  ["50_admin_readonly"]="case_50_admin_readonly"
+# Define case order and their function names (parallel indexed arrays)
+CASE_NAMES=(
+  "00_readiness"
+  "01_auth_catalog_setup"
+  "10_cart_cleanup"
+  "20_checkout_approved"
+  "21_checkout_insufficient_stock"
+  "22_checkout_idempotency"
+  "23_checkout_reconciliation_privacy"
+  "30_seller_orders"
+  "31_seller_order_status"
+  "32_buyer_orders_history"
+  "40_cancel_order_buyer"
+  "41_cancel_order_seller"
+  "42_cancel_order_privacy"
+  "43_cancel_order_idempotency"
+  "50_admin_readonly"
+)
+
+CASE_FUNCS=(
+  "case_00_readiness"
+  "case_01_auth_catalog_setup"
+  "case_10_cart_cleanup"
+  "case_20_checkout_approved"
+  "case_21_checkout_insufficient_stock"
+  "case_22_checkout_idempotency"
+  "case_23_checkout_reconciliation_privacy"
+  "case_30_seller_orders"
+  "case_31_seller_order_status"
+  "case_32_buyer_orders_history"
+  "case_40_cancel_order_buyer"
+  "case_41_cancel_order_seller"
+  "case_42_cancel_order_privacy"
+  "case_43_cancel_order_idempotency"
+  "case_50_admin_readonly"
 )
 
 # Parse E2E_CASES filter
-RUN_CASES=()
+RUN_INDICES=()
 if [[ -n "${E2E_CASES:-}" ]]; then
   IFS=',' read -ra FILTER <<< "$E2E_CASES"
-  for prefix in "${FILTER[@]}"; do
-    prefix="$(echo "$prefix" | xargs)" # trim
-    for case_name in "${!CASES[@]}"; do
-      if [[ "$case_name" == "$prefix"* ]]; then
-        RUN_CASES+=("$case_name")
+  for idx in "${!CASE_NAMES[@]}"; do
+    local_name="${CASE_NAMES[$idx]}"
+    for prefix in "${FILTER[@]}"; do
+      prefix="$(echo "$prefix" | xargs)" # trim
+      if [[ "$local_name" == "$prefix"* ]]; then
+        RUN_INDICES+=("$idx")
+        break
       fi
     done
   done
 else
-  RUN_CASES=("${!CASES[@]}")
+  for idx in "${!CASE_NAMES[@]}"; do
+    RUN_INDICES+=("$idx")
+  done
 fi
 
-# Sort by key
-IFS=$'\n' RUN_CASES=($(sort <<<"${RUN_CASES[*]}")); unset IFS
+if [[ ${#RUN_INDICES[@]} -eq 0 ]]; then
+  echo "WARNING: No cases matched E2E_CASES filter. Available:" >&2
+  printf '  %s\n' "${CASE_NAMES[@]}" >&2
+  exit 0
+fi
 
 blue "== Bazaar E2E Suite =="
 blue "RUN_ID=$RUN_ID  TARGET=$E2E_TARGET_ENV"
 
-for case_name in "${RUN_CASES[@]}"; do
-  func_name="${CASES[$case_name]}"
+for idx in "${RUN_INDICES[@]}"; do
+  case_name="${CASE_NAMES[$idx]}"
+  func_name="${CASE_FUNCS[$idx]}"
   case_file="$CASES_DIR/${case_name}.sh"
 
   if [[ ! -f "$case_file" ]]; then
