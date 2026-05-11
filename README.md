@@ -191,6 +191,55 @@ Atajos opcionales para levantar una sola unidad:
 - `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
 
 
+## Tests E2E
+
+Los scripts de integración E2E validan el checkout saga (SDD7, SDD8, SDD9) contra backend real.
+
+```bash
+# Entorno local (default recomendado)
+./scripts/test/integration/e2e_local.sh
+
+# Contra Render (requiere confirmación explícita)
+ALLOW_RENDER_E2E="I_UNDERSTAND_THIS_WRITES_TO_RENDER" \
+  ./scripts/test/integration/e2e_render.sh
+```
+
+**Importante**: `_e2e_checkout.sh` requiere `E2E_TARGET_ENV` definido explícitamente. Ya no tiene Render como default implícito para evitar contaminar datos de producción por accidente.
+
+## Limpieza de datos E2E en Render
+
+Cuando se corren tests E2E contra Render, se crean usuarios (`u%@test.local`), productos (`SDD7_*`, `SDD9_*`), carritos, órdenes y pagos reales en las DBs de producción. Para limpiarlos de forma segura:
+
+### Setup único
+
+```bash
+cp scripts/maintenance/.env.cleanup.example scripts/maintenance/.env.cleanup
+# Editar .env.cleanup con las DATABASE_URL de cada servicio en Render
+```
+
+### Flujo de limpieza (3 fases)
+
+```bash
+# Fase 1: Dry-run — audita sin borrar nada
+./scripts/maintenance/cleanup_e2e_dry_run.sh
+# Revisar tmp/e2e-cleanup-dry-run-<ts>/REPORT.md
+
+# Fase 2: Apply — borra con backup (requiere frase exacta de confirmación)
+CLEANUP_RUN_DIR=tmp/e2e-cleanup-dry-run-<timestamp> \
+CONFIRMATION="CONFIRMO BORRAR E2E RENDER" \
+  ./scripts/maintenance/cleanup_e2e_apply.sh
+
+# Fase 3: Verificar — confirma que no quedaron residuos
+CLEANUP_RUN_DIR=tmp/e2e-cleanup-dry-run-<timestamp> \
+  ./scripts/maintenance/cleanup_e2e_post_verify.sh
+```
+
+**Safety gates del apply**:
+- Requiere `CONFIRMATION="CONFIRMO BORRAR E2E RENDER"` exacto
+- Requiere `CLEANUP_RUN_DIR` apuntando a un dry-run previo
+- Hace backup CSV de cada tabla antes de borrar
+- Borra en orden de dependencias (order_status → orders → checkout_groups → payments → carts → reservations → products → perfiles → usuarios)
+
 ## Links a repositorios
 -`Bazaar-backend-api-gateway` https://github.com/is2-bazaar/Bazaar-backend-api-gateway.git
 
