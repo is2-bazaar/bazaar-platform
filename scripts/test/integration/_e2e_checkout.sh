@@ -1264,6 +1264,11 @@ checkout_sdd7_cleanup_suite() {
     record FAIL "checkout approved before cleanup assertion" "HTTP $code cg=$cgid status=$status order_status=$order_status body=$(body_flat "$HTTP_DIR/checkout-sdd7-approved.json")"
   fi
 
+  if ! is_2xx "$code" || [[ -z "$cgid" || -z "$order_id" ]]; then
+    record SKIP "SDD7 checkout-dependent cleanup assertions" "checkout failed or produced no valid cgid/order_id"
+    return 0
+  fi
+
   get_cart checkout-cleanup-after "$buyer" >/dev/null
   qty="$(cart_qty checkout-cleanup-after "$product")"
   [[ "$qty" == "0" ]] && record PASS "order-service cleanup removed purchased item" "qty=$qty" || record FAIL "order-service cleanup removed purchased item" "qty=$qty expected=0"
@@ -1530,6 +1535,11 @@ sdd9_seller_admin_privacy_suite() {
 
   state_put SDD9_ORDER_A_ID "$order_id_a"
   state_put SDD9_ORDER_B_ID "$order_id_b"
+
+  if ! is_2xx "$code" || [[ -z "$cgid" || -z "$order_id_a" || -z "$order_id_b" ]]; then
+    record SKIP "SDD9 seller/admin privacy dependent assertions" "checkout failed or did not produce both order IDs"
+    return 0
+  fi
 
   # ── Step 3: Seller A list isolation ──
   code="$(seller_get_orders sdd9-seller-a-list "$seller_a_token")"
