@@ -159,7 +159,7 @@ Implementado en `cart-service/internal/repository/cart_cleanup_repository.go`. E
 Si el cliente pierde conexión (timeout del API Gateway, app se cierra, pantalla de pago pending), dispone de dos endpoints de solo lectura:
 
 - **`GET /checkout/attempts/:idempotencyKey`**: Busca el `CheckoutGroup` por `(buyer_id, idempotency_key)`. No dispara side effects. Retorna el estado actual del grupo y sus órdenes hijas. Útil cuando el frontend conservó la key pero no recibió respuesta.
-- **`GET /checkout-groups/:checkoutGroupId`**: Busca por `checkout_group_id`. Ownership restringido: solo el buyer dueño o admin pueden acceder. Retorna detalle completo incluyendo campos de progreso de saga (`payment_status`, `stock_reservation_status`, `stock_confirmation_status`, `orders_confirmation_status`, `cart_cleanup_status`). Útil cuando el frontend llegó a recibir el `checkout_group_id` pero perdió la respuesta completa.
+- **`GET /checkout-groups/:checkoutGroupId`**: Busca por `checkout_group_id`. Ownership restringido: solo el buyer dueño o admin pueden acceder. Retorna detalle con campos de progreso de saga (`payment_status`, `stock_reservation_status`, `stock_confirmation_status`, `orders_confirmation_status`) y las órdenes hijas. Útil cuando el frontend llegó a recibir el `checkout_group_id` pero perdió la respuesta completa.
 
 Ambos endpoints aplican privacy hardening de SDD9: un buyer ajeno recibe 404. Campos internos (`idempotency_key`, `last_error`, `cart_cleanup_status`, `stock_reservation_id`, tokens internos) NO se exponen en el DTO público bajo ningún rol — ni para el dueño ni para admin. El contrato público de `CheckoutGroupResponse` incluye únicamente: `id`, `buyer_id`, `status`, `grand_total`, `payment_status`, `stock_reservation_status`, `stock_confirmation_status`, `orders_confirmation_status`, `orders[]`, `message` (opcional).
 
@@ -219,7 +219,7 @@ pending → approved → refund_pending → refunded
         ↘ rejected (terminal)
 ```
 
-**Nota sobre refund**: El endpoint `POST /internal/payments/:paymentId/refund` existe y es funcional, pero solo transiciona a `refund_pending`. La transición a `refunded` no está implementada (no hay webhook ni job asíncrono que complete el refund). El refund se usa como compensación técnica dentro de la saga y como paso inicial de cancelaciones de usuario.
+**Nota sobre refund**: El endpoint `POST /internal/payments/:paymentId/refund` existe y permite iniciar una compensación técnica o un futuro flujo de cancelación. Hoy transiciona a `refund_pending`. La transición a `refunded` no está implementada (no hay webhook ni job asíncrono que complete el refund), por lo que la historia completa de reembolso simulado y cancelación con refund sigue parcial.
 
 ### StockReservation — estados
 
@@ -461,7 +461,7 @@ Cada servicio tiene su propia suite de tests unitarios:
 - **Contract testing**: Validar que los contratos OpenAPI de cada servicio se corresponden con lo implementado.
 - **Health check de la saga**: Endpoint que exponga `CheckoutGroup` en estado `compensating` o `payment_approved` sin confirmar, para monitoreo.
 - **Simulación de payment provider real**: Actualmente `Provider: "simulated"`. Una integración real con MercadoPago requeriría webhooks asíncronos.
-- **Idempotencia en cleanup con reintentos automáticos**: Actualmente si `cart_cleanup_status = "failed"`, se reintenta en el próximo GET del CG. Podría agregarse un job que limpie carritos sucios.
+- **Idempotencia en cleanup con reintentos automáticos**: Actualmente si el cleanup falla, el CG queda en `confirmed` con las órdenes confirmadas pero el carrito sucio (no se revierte la compra). Podría agregarse un job que reintente el cleanup pendiente — hoy no hay reintento automático.
 
 ## Hallazgos fuera del scope de esta documentación
 

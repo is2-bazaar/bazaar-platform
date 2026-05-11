@@ -130,7 +130,7 @@ Reserves stock for all items in a checkout group. All-or-nothing: if any item ha
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `{checkout_group_id}` |
+| Idempotencia | Unique index en `stock_reservations.checkout_group_id` |
 | Request Body | `StockReservationRequest` |
 | Success Response | `200 OK` |
 | Error Response | `409 Conflict` — `StockInsufficientError` |
@@ -142,9 +142,8 @@ Request body:
   "checkout_group_id": "uuid",
   "items": [
     {
-      "product_id": "uuid",
-      "quantity": 2,
-      "seller_id": "uuid"
+      "product_id": 10,
+      "quantity": 2
     }
   ]
 }
@@ -157,7 +156,7 @@ Confirms a previously successful reservation after payment is approved. Does NOT
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `confirm-{checkout_group_id}` |
+| Idempotencia | Path param `checkoutGroupId` + estado de reserva (`reserved`) |
 | Path Param | `checkoutGroupId` (UUID) |
 | Success Response | `200 OK` |
 
@@ -168,7 +167,7 @@ Releases a previously successful reservation on payment rejection or saga compen
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `release-{checkout_group_id}` |
+| Idempotencia | Path param `checkoutGroupId` + estado de reserva (`reserved`) |
 | Path Param | `checkoutGroupId` (UUID) |
 | Success Response | `200 OK` |
 
@@ -181,7 +180,7 @@ Creates a single payment intent for the entire checkout group.
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `payment-{checkout_group_id}` |
+| Idempotencia | Unique index en `payments.checkout_group_id` + `payments.idempotency_key` |
 | Request Body | `PaymentCreateRequest` |
 | Success Response | `201 Created` — `PaymentCreateResponse` (status: `approved`, `rejected`, or `pending`) |
 | Error Response | `4xx` / `5xx` |
@@ -192,7 +191,7 @@ Request body:
 {
   "checkout_group_id": "uuid",
   "amount": 18000.00,
-  "buyer_id": "uuid",
+  "buyer_id": 42,
   "idempotency_key": "payment-{checkout_group_id}"
 }
 ```
@@ -214,7 +213,7 @@ Technical compensatory refund only — used when the saga needs to revert a succ
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `refund-{checkout_group_id}` |
+| Idempotencia | Idempotente por estado de pago (`refund_pending`/`refunded`) |
 | Path Param | `paymentId` (UUID) |
 | Request Body | `TechnicalRefundRequest` |
 | Success Response | `200 OK` |
@@ -336,17 +335,16 @@ The saga architecture is delivered in 10 incremental phases. Each SDD is indepen
 
 ## Out of Scope
 
-The following are explicitly out of scope for this ADR and the SDD0–SDD9 sequence defined here:
+The following are explicitly out of scope for this ADR as a document — they are not architectural decisions covered here:
 
-- Business code implementation (handlers, repositories, services)
-- Database migrations
-- Functional tests
-- Full user-facing cancellation/refund feature
-- Payment provider integration specifics
-- Gateway routing implementation
-- Admin/seller UI changes
+- UI/backoffice frontend implementation
+- Integration with a real external payment provider (currently simulated)
+- Full user-facing cancellation/refund flow (partial: refund endpoint exists but `refund_pending → refunded` is not implemented)
+- Asynchronous jobs for closing refunds
+- Circuit breakers / retry with backoff
+- Coupon implementation (endpoints are stubs)
 
-These items may be addressed in future SDDs beyond SDD9 or in separate change proposals.
+> **Historical note**: The original ADR was written at SDD0 as a pure architecture contract. Subsequent SDDs (1–9) implemented the handlers, repositories, migrations, tests, and gateway routing. This document now reflects the implemented state, not just the original contract.
 
 ## References
 
