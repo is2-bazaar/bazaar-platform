@@ -116,4 +116,4 @@ else
   echo "[e2e][render][warn] Continuing because this is not an auth rejection."
 fi
 
-"$SCRIPT_DIR/_e2e_checkout.sh"
+"$SCRIPT_DIR/e2e_tests.sh"
