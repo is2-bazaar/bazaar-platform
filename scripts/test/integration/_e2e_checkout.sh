@@ -19,10 +19,13 @@ set -euo pipefail
 #   Se asume PAYMENT_SIMULATION_MODE=approved en payment-service.
 #
 # Uso (local):
-#   ./scripts/test/integration/run_sdd7_local_env.sh
+#   ./scripts/test/integration/e2e_local.sh
+#
+# Uso (render):
+#   ./scripts/test/integration/e2e_render.sh
 #
 # Uso directo:
-#   E2E_TARGET_ENV=local API_BASE=http://localhost:8080 ... ./scripts/test/integration/e2e_render_checkout_saga_sdd7.sh
+#   E2E_TARGET_ENV=local API_BASE=http://localhost:8080 ... ./scripts/test/integration/_e2e_checkout.sh
 #
 # Opcionales:
 #   RUN_ID=123 INTERNAL_SERVICE_TOKEN=... ADMIN_EMAIL=... ADMIN_PASSWORD=...
@@ -45,11 +48,73 @@ if [[ -f "$PLATFORM_ROOT/.env.local" ]]; then
   source "$PLATFORM_ROOT/.env.local"
 fi
 
+# ── Resolve admin credentials ─────────────────────────────────────────────
+_resolve_admin_creds() {
+  if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
+    echo "[e2e] Using ADMIN_EMAIL/ADMIN_PASSWORD from environment"
+    return 0
+  fi
+
+  local bootstrap_value="${AUTH_BOOTSTRAP_ADMINS:-}"
+
+  if [[ -n "$bootstrap_value" ]]; then
+    local stripped_value="$bootstrap_value"
+    if [[ "$stripped_value" == \'*\' ]]; then
+      stripped_value="${stripped_value#\'}"
+      stripped_value="${stripped_value%\'}"
+    elif [[ "$stripped_value" == \"*\" ]]; then
+      stripped_value="${stripped_value#\"}"
+      stripped_value="${stripped_value%\"}"
+    fi
+
+    local email password
+
+    # Try JSON first (properly quoted keys and values)
+    email="$(echo "$stripped_value" | python3 -c "
+import json, sys
+try:
+    data = json.loads(sys.stdin.read())
+    if isinstance(data, list) and len(data) > 0:
+        print(data[0].get('email', ''))
+except Exception:
+    pass
+" 2>/dev/null)"
+
+    password="$(echo "$stripped_value" | python3 -c "
+import json, sys
+try:
+    data = json.loads(sys.stdin.read())
+    if isinstance(data, list) and len(data) > 0:
+        print(data[0].get('password', ''))
+except Exception:
+    pass
+" 2>/dev/null)"
+
+    # Fallback: unquoted JS-object format (e.g. {email:admin@...,password:Xxx})
+    if [[ -z "$email" || -z "$password" ]]; then
+      email="$(echo "$stripped_value" | grep -oE 'email:[[:space:]]*([^,[:space:]}]+)' | head -1 | sed -E 's/^email:[[:space:]]*//')"
+      password="$(echo "$stripped_value" | grep -oE 'password:[[:space:]]*([^,[:space:]}]+)' | head -1 | sed -E 's/^password:[[:space:]]*//')"
+    fi
+
+    if [[ -n "$email" && -n "$password" ]]; then
+      ADMIN_EMAIL="$email"
+      ADMIN_PASSWORD="$password"
+      echo "[e2e] Resolved admin from AUTH_BOOTSTRAP_ADMINS: $ADMIN_EMAIL"
+      return 0
+    fi
+  fi
+
+  echo "[e2e][warn] Admin credentials not found. Set ADMIN_EMAIL/ADMIN_PASSWORD or AUTH_BOOTSTRAP_ADMINS. Admin tests will be skipped."
+  ADMIN_EMAIL=""
+  ADMIN_PASSWORD=""
+  return 0
+}
+
+_resolve_admin_creds
+
 INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}"
 CART_INTERNAL_SERVICE_TOKEN="${CART_INTERNAL_SERVICE_TOKEN:-$INTERNAL_SERVICE_TOKEN}"
 PASSWORD="${PASSWORD:-E2eUser1234!}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 RUN_ID="${RUN_ID:-$(date +%s)}"
 
 OUT_DIR="tmp/e2e-checkout-saga-sdd7-sdd8-sdd9-${E2E_TARGET_ENV:-render}-${RUN_ID}"
@@ -1199,6 +1264,11 @@ checkout_sdd7_cleanup_suite() {
     record FAIL "checkout approved before cleanup assertion" "HTTP $code cg=$cgid status=$status order_status=$order_status body=$(body_flat "$HTTP_DIR/checkout-sdd7-approved.json")"
   fi
 
+  if ! is_2xx "$code" || [[ -z "$cgid" || -z "$order_id" ]]; then
+    record SKIP "SDD7 checkout-dependent cleanup assertions" "checkout failed or produced no valid cgid/order_id"
+    return 0
+  fi
+
   get_cart checkout-cleanup-after "$buyer" >/dev/null
   qty="$(cart_qty checkout-cleanup-after "$product")"
   [[ "$qty" == "0" ]] && record PASS "order-service cleanup removed purchased item" "qty=$qty" || record FAIL "order-service cleanup removed purchased item" "qty=$qty expected=0"
@@ -1465,6 +1535,11 @@ sdd9_seller_admin_privacy_suite() {
 
   state_put SDD9_ORDER_A_ID "$order_id_a"
   state_put SDD9_ORDER_B_ID "$order_id_b"
+
+  if ! is_2xx "$code" || [[ -z "$cgid" || -z "$order_id_a" || -z "$order_id_b" ]]; then
+    record SKIP "SDD9 seller/admin privacy dependent assertions" "checkout failed or did not produce both order IDs"
+    return 0
+  fi
 
   # ── Step 3: Seller A list isolation ──
   code="$(seller_get_orders sdd9-seller-a-list "$seller_a_token")"
