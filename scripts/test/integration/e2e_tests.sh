@@ -80,7 +80,7 @@ CASE_FUNCS=(
 # Parse E2E_CASES filter
 RUN_INDICES=()
 if [[ -n "${E2E_CASES:-}" ]]; then
-  IFS=',' read -ra FILTER <<< "$E2E_CASES"
+  IFS=',' read -ra FILTER <<<"$E2E_CASES"
   for idx in "${!CASE_NAMES[@]}"; do
     local_name="${CASE_NAMES[$idx]}"
     for prefix in "${FILTER[@]}"; do
@@ -120,7 +120,10 @@ for idx in "${RUN_INDICES[@]}"; do
   source "$case_file"
 
   if declare -f "$func_name" >/dev/null 2>&1; then
+    # Run case with errexit suspended so one FAIL does not abort the suite
+    set +e
     "$func_name"
+    set -e
   else
     record FAIL "$case_name" "function $func_name not defined after sourcing"
   fi

@@ -96,8 +96,8 @@ case_22_checkout_idempotency() {
   # Verify items are there
   local qty_after_readd
   qty_after_readd="$(json_find_cart_quantity_by_product_id "$HTTP_DIR/cart-get-idemp-cart-after-readd.json" "$product_id")"
-  [[ "$qty_after_readd" == "3" ]] && record PASS "idempotency re-add cart has items" "qty=$qty_after_readd" \
-    || record FAIL "idempotency re-add cart has items" "qty=$qty_after_readd expected=3"
+  [[ "$qty_after_readd" == "3" ]] && record PASS "idempotency re-add cart has items" "qty=$qty_after_readd" ||
+    record FAIL "idempotency re-add cart has items" "qty=$qty_after_readd expected=3"
 
   # Retry checkout with same key
   code="$(checkout idemp-retry-after-readd "$buyer_checkout" "$idem")"
@@ -111,6 +111,6 @@ case_22_checkout_idempotency() {
   get_cart idemp-cart-after-retry "$buyer_checkout" >/dev/null
   local qty_after_retry
   qty_after_retry="$(json_find_cart_quantity_by_product_id "$HTTP_DIR/cart-get-idemp-cart-after-retry.json" "$product_id")"
-  [[ "$qty_after_retry" == "3" ]] && record PASS "checkout idempotency does not delete re-added items" "qty=$qty_after_retry" \
-    || record FAIL "checkout idempotency does not delete re-added items" "qty=$qty_after_retry expected=3"
+  [[ "$qty_after_retry" == "3" ]] && record PASS "checkout idempotency does not delete re-added items" "qty=$qty_after_retry" ||
+    record FAIL "checkout idempotency does not delete re-added items" "qty=$qty_after_retry expected=3"
 }

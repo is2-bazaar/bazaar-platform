@@ -49,8 +49,8 @@ case_31_seller_order_status() {
 
   code="$(seller_get_order sdd9-a-after-prep "$seller_a_token" "$order_id_a")"
   a_status="$(json_order_status "$HTTP_DIR/seller-order-sdd9-a-after-prep.json")"
-  [[ "$a_status" == "en preparación" ]] && record PASS "SDD9 seller A status is en preparación" "status=$a_status" \
-    || record FAIL "SDD9 seller A status is en preparación" "status=$a_status"
+  [[ "$a_status" == "en preparación" ]] && record PASS "SDD9 seller A status is en preparación" "status=$a_status" ||
+    record FAIL "SDD9 seller A status is en preparación" "status=$a_status"
 
   # en preparación → enviada
   code="$(seller_update_order_status sdd9-a-sent "$seller_a_token" "$order_id_a" "enviada" "TRACK-SDD9A-${RUN_ID}")"
@@ -63,8 +63,8 @@ case_31_seller_order_status() {
 
   code="$(seller_get_order sdd9-a-after-sent "$seller_a_token" "$order_id_a")"
   a_status="$(json_order_status "$HTTP_DIR/seller-order-sdd9-a-after-sent.json")"
-  [[ "$a_status" == "enviada" ]] && record PASS "SDD9 seller A status is enviada" "status=$a_status" \
-    || record FAIL "SDD9 seller A status is enviada" "status=$a_status"
+  [[ "$a_status" == "enviada" ]] && record PASS "SDD9 seller A status is enviada" "status=$a_status" ||
+    record FAIL "SDD9 seller A status is enviada" "status=$a_status"
 
   # Foreign seller cannot mutate
   code="$(seller_update_order_status sdd9-intruder-mutate "$seller_intruder_token" "$order_id_a" "enviada" "TRACK-BAD")"

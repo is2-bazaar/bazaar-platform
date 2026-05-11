@@ -36,7 +36,7 @@ def resolve(obj, path):
     for part in path.split("."):
         if not part:
             continue
-        m = re.fullmatch(r"([A-Za-z0-9_]+)(\[(\d+)\])?", part)
+        m = re.fullmatch(r"([A-Za-z0-9_-]+)(\[(\d+)\])?", part)
         if not m:
             return ""
         key = m.group(1)

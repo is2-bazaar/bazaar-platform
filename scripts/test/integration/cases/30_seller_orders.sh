@@ -48,8 +48,8 @@ case_30_seller_orders() {
   local qty_a qty_b
   qty_a="$(cart_qty sdd9-cart-before "$product_a")"
   qty_b="$(cart_qty sdd9-cart-before "$product_b")"
-  [[ "$qty_a" == "1" && "$qty_b" == "1" ]] && record PASS "SDD9 cart has both products" "a=$qty_a b=$qty_b" \
-    || record FAIL "SDD9 cart has both products" "a=$qty_a b=$qty_b"
+  [[ "$qty_a" == "1" && "$qty_b" == "1" ]] && record PASS "SDD9 cart has both products" "a=$qty_a b=$qty_b" ||
+    record FAIL "SDD9 cart has both products" "a=$qty_a b=$qty_b"
 
   code="$(checkout sdd9-multiseller "$buyer_sdd9_token" "$idem")"
   cgid="$(json_get "$HTTP_DIR/checkout-sdd9-multiseller.json" ".checkout_group_id")"
@@ -93,8 +93,8 @@ case_30_seller_orders() {
 
   local count_b_in_a
   count_b_in_a="$(json_count_orders_for_seller "$HTTP_DIR/seller-orders-sdd9-seller-a-list.json" "$seller_b_id")"
-  [[ "$count_b_in_a" == "0" ]] && record PASS "SDD9 seller A list hides seller B orders" "count=$count_b_in_a" \
-    || record FAIL "SDD9 seller A list hides seller B orders" "count=$count_b_in_a"
+  [[ "$count_b_in_a" == "0" ]] && record PASS "SDD9 seller A list hides seller B orders" "count=$count_b_in_a" ||
+    record FAIL "SDD9 seller A list hides seller B orders" "count=$count_b_in_a"
 
   # Seller B list isolation
   code="$(seller_get_orders sdd9-seller-b-list "$seller_b_token")"

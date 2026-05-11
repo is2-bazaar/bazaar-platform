@@ -31,8 +31,8 @@ case_20_checkout_approved() {
 
   get_cart checkout-cleanup-before "$buyer" >/dev/null
   qty="$(cart_qty checkout-cleanup-before "$product")"
-  [[ "$qty" == "2" ]] && record PASS "checkout cleanup setup cart quantity" "qty=$qty" \
-    || record FAIL "checkout cleanup setup cart quantity" "qty=$qty expected=2"
+  [[ "$qty" == "2" ]] && record PASS "checkout cleanup setup cart quantity" "qty=$qty" ||
+    record FAIL "checkout cleanup setup cart quantity" "qty=$qty expected=2"
 
   code="$(checkout sdd7-approved "$buyer" "$idem")"
   cgid="$(json_get "$HTTP_DIR/checkout-sdd7-approved.json" ".checkout_group_id")"
@@ -58,14 +58,14 @@ case_20_checkout_approved() {
 
   get_cart checkout-cleanup-after "$buyer" >/dev/null
   qty="$(cart_qty checkout-cleanup-after "$product")"
-  [[ "$qty" == "0" ]] && record PASS "order-service cleanup removed purchased item" "qty=$qty" \
-    || record FAIL "order-service cleanup removed purchased item" "qty=$qty expected=0"
+  [[ "$qty" == "0" ]] && record PASS "order-service cleanup removed purchased item" "qty=$qty" ||
+    record FAIL "order-service cleanup removed purchased item" "qty=$qty expected=0"
 
   add_to_cart checkout-cleanup-readd "$buyer" "$product" 3
   get_cart checkout-cleanup-readd-before-retry "$buyer" >/dev/null
   qty="$(cart_qty checkout-cleanup-readd-before-retry "$product")"
-  [[ "$qty" == "3" ]] && record PASS "buyer can re-add after confirmed checkout cleanup" "qty=$qty" \
-    || record FAIL "buyer can re-add after confirmed checkout cleanup" "qty=$qty expected=3"
+  [[ "$qty" == "3" ]] && record PASS "buyer can re-add after confirmed checkout cleanup" "qty=$qty" ||
+    record FAIL "buyer can re-add after confirmed checkout cleanup" "qty=$qty expected=3"
 
   code="$(checkout sdd7-approved-retry-after-readd "$buyer" "$idem")"
   if is_2xx "$code"; then
@@ -77,6 +77,6 @@ case_20_checkout_approved() {
 
   get_cart checkout-cleanup-after-retry "$buyer" >/dev/null
   qty="$(cart_qty checkout-cleanup-after-retry "$product")"
-  [[ "$qty" == "3" ]] && record PASS "checkout retry does not cleanup re-added items" "qty=$qty" \
-    || record FAIL "checkout retry does not cleanup re-added items" "qty=$qty expected=3"
+  [[ "$qty" == "3" ]] && record PASS "checkout retry does not cleanup re-added items" "qty=$qty" ||
+    record FAIL "checkout retry does not cleanup re-added items" "qty=$qty expected=3"
 }

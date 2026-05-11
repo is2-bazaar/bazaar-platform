@@ -125,11 +125,13 @@ case_23_checkout_reconciliation_privacy() {
     assert_forbidden_or_hidden "$code" "SDD8 checkout attempts foreign buyer"
 
     code="$(req checkout-attempt-invalid-uuid GET "$API_BASE/checkout/attempts/not-a-valid-uuid")"
-    if is_4xx "$code"; then record PASS "SDD8 checkout attempts invalid uuid" "HTTP $code"
+    if is_4xx "$code"; then
+      record PASS "SDD8 checkout attempts invalid uuid" "HTTP $code"
     else record FAIL "SDD8 checkout attempts invalid uuid" "HTTP $code body=$(body_flat "$HTTP_DIR/checkout-attempt-invalid-uuid.json")"; fi
 
     code="$(req checkout-attempt-no-token GET "$API_BASE/checkout/attempts/$cgid")"
-    if is_401_403 "$code"; then record PASS "SDD8 checkout attempts no token" "HTTP $code"
+    if is_401_403 "$code"; then
+      record PASS "SDD8 checkout attempts no token" "HTTP $code"
     else record FAIL "SDD8 checkout attempts no token" "HTTP $code body=$(body_flat "$HTTP_DIR/checkout-attempt-no-token.json")"; fi
 
     code="$(checkout_group_get owner "$buyer" "$cgid")"
@@ -155,11 +157,13 @@ case_23_checkout_reconciliation_privacy() {
     fi
 
     code="$(req checkout-group-invalid-uuid GET "$API_BASE/checkout-groups/not-a-valid-uuid")"
-    if is_4xx "$code"; then record PASS "SDD8 checkout groups invalid uuid" "HTTP $code"
+    if is_4xx "$code"; then
+      record PASS "SDD8 checkout groups invalid uuid" "HTTP $code"
     else record FAIL "SDD8 checkout groups invalid uuid" "HTTP $code body=$(body_flat "$HTTP_DIR/checkout-group-invalid-uuid.json")"; fi
 
     code="$(req checkout-group-no-token GET "$API_BASE/checkout-groups/$cgid")"
-    if is_401_403 "$code"; then record PASS "SDD8 checkout groups no token" "HTTP $code"
+    if is_401_403 "$code"; then
+      record PASS "SDD8 checkout groups no token" "HTTP $code"
     else record FAIL "SDD8 checkout groups no token" "HTTP $code body=$(body_flat "$HTTP_DIR/checkout-group-no-token.json")"; fi
   else
     record SKIP "SDD8 checkout privacy" "no checkout_group_id from SDD7"
