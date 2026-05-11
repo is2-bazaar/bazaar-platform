@@ -75,7 +75,8 @@ El sistema soporta reintentos seguros en todos sus niveles usando un esquema de 
 9. **payment-service** verifica idempotencia (unique index), crea payment con estado según `PAYMENT_SIMULATION_MODE` (default: `approved`) o header `X-Payment-Simulation-Status`.
 10. **order-service** evalúa el resultado del pago:
     - **approved** → `handleApprovedPaymentConfirm`: (a) `POST .../confirm` a catalog, (b) bulk-update de órdenes a `confirmada`, (c) actualiza CG a `confirmed`.
-    - **rejected** → `handleRejectedPaymentRelease`: (a) persiste CG como `compensating`, (b) `POST .../release` a catalog, (c) bulk-update de órdenes a `pago rechazado`, (d) actualiza CG a `payment_rejected`.
+    - **rejected** → `handleRejectedPaymentRelease`: (a) `POST .../release` a catalog, (b) bulk-update de órdenes a `pago rechazado`, (c) actualiza CG a `payment_rejected`.
+    - **downstream failure after payment approved** → el CG transiciona a `compensating`, se intenta liberar stock y/o refund técnico; resultado posible: `refund_pending` o `failed`. Ver ADR 0009 sección 4c.
 11. **order-service** ejecuta `cleanupCartAfterConfirmedPurchase`: llama a cart-service `POST /internal/checkout-cleanup` con `buyer_id`, `checkout_group_id` e `items[]`. Esta llamada es idempotente y no revierte la compra si falla (solo loguea el error).
 12. **order-service** responde al frontend con `CheckoutResponse` incluyendo `checkout_group_id`, `grand_total`, `orders[]`, `payment_url` (si pending).
 

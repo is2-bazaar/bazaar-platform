@@ -66,13 +66,22 @@ The checkout flow is a **saga orchestrated by `order-service`**. The saga progre
       POST /internal/checkout-cleanup
     → all orders in the group advance to "confirmada"
 
- 4b. On payment rejected or downstream failure:
-    → order-service calls catalog-service:
-      POST /internal/stock/reservations/{checkoutGroupId}/release
-    → if payment was already processed, order-service calls payment-service:
-      POST /internal/payments/{paymentId}/refund  (technical compensatory refund)
-    → all orders in the group move to "pago rechazado" or "fallida"
-    → saga status = compensating → payment_rejected
+ 4b. On payment rejected:
+     → order-service calls catalog-service:
+       POST /internal/stock/reservations/{checkoutGroupId}/release
+     → all orders in the group move to "pago rechazado"
+     → saga status = payment_rejected
+
+  4c. On downstream failure after payment approved:
+     → order-service marks CheckoutGroup as compensating
+     → order-service attempts to compensate:
+       - Release stock: POST /internal/stock/reservations/{checkoutGroupId}/release
+       - Technical refund: POST /internal/payments/{paymentId}/refund
+     → possible outcomes:
+       - refund_pending: refund initiated but not confirmed as refunded
+       - failed: compensation could not complete, requires manual intervention
+     → saga status = compensating → refund_pending / failed
+     (NOT payment_rejected — the payment was approved, the failure was elsewhere)
 ```
 
 The saga is strictly sequential: Reserve → Pay → Confirm/Cleanup. No step executes before its predecessor succeeds. Compensation runs in reverse order of completed steps.
