@@ -2,7 +2,19 @@
 
 ## Status
 
-Proposed
+Accepted / Implemented (Actualizado post-SDD9 — Mayo 2026)
+
+## Correcciones post-implementación (Mayo 2026)
+
+Tras inspeccionar el código real y los PRs asociados a SDD0–SDD9 (order-service #41 y gateway #19 aún abiertos al momento de redactar esta corrección), se corrigieron las siguientes discrepancias entre el ADR original y lo implementado:
+
+1. **Cart cleanup endpoint**: El path real es `POST /internal/checkout-cleanup`, no `/internal/carts/{buyerId}/clear-purchased-items`. La idempotencia se basa en un unique index sobre `cart_cleanup_operations.checkout_group_id` con `ON CONFLICT DO NOTHING`, no en un header `Idempotency-Key`.
+2. **CheckoutGroup estados**: El modelo real tiene 12 estados (`pending_stock`, `pending_payment`, `payment_approved`, `payment_rejected`, `compensating`, `failed`, `confirmed`, `preparing`, `shipped`, `delivered`, `cancelled`, `completed`) más 6 campos de progreso granular. El ADR original solo mencionaba 5.
+3. **Payment rejected**: No retorna HTTP 402. Payment-service crea el payment con `status: "rejected"` y retorna HTTP 201. El manejo de compensación (release de stock) lo ejecuta order-service.
+4. **Refund**: El endpoint `POST /internal/payments/{paymentId}/refund` existe y es funcional, pero solo transiciona a `refund_pending`. La transición a `refunded` no está implementada (sin webhook asíncrono).
+5. **Órdenes post-checkout**: Las órdenes quedan en `confirmada` después del checkout exitoso, no en `en preparación`. Los estados de fulfillment se alcanzan vía endpoints de seller/comprador.
+6. **Cart DB**: PostgreSQL exclusivamente. No se usa Redis en producción.
+7. **Sin backoff/circuit breaker**: La idempotencia es la única red de seguridad ante reintentos. No hay retry automático con backoff.
 
 ## Context
 
@@ -13,7 +25,7 @@ ADR 0008 leaves the consistency strategy open: "es aceptable una orquestación s
 1. An explicit **saga orchestration** model where `order-service` is the central orchestrator.
 2. Concrete **internal service contracts** for stock reservation, payment, and cart cleanup.
 3. **Idempotency rules** — both public (buyer-facing) and internal (service-to-service).
-4. A **phased delivery sequence** (SDD0–SDD10) that decomposes the saga into incremental, verifiable increments.
+4. A **phased delivery sequence** (SDD0–SDD9) that decomposes the saga into incremental, verifiable increments.
 
 Without these definitions, each service team would interpret ADR 0008 differently, leading to divergent contracts, inconsistent error handling, and integration failures at the saga level.
 
@@ -30,7 +42,7 @@ The checkout flow is a **saga orchestrated by `order-service`**. The saga progre
 | **StockReservation** | A temporary hold on inventory for items in a `CheckoutGroup` pending payment confirmation. All-or-nothing per group. |
 | **Payment** | A single financial transaction covering the sum of all orders in a `CheckoutGroup`. |
 | **CartCleanup** | The process of selectively removing only purchased quantities of items from a cart post-payment, preserving later additions. NOT a clear-all operation. |
-| **SagaStatus** | The state of the distributed transaction: `pending_stock`, `pending_payment`, `completed`, `compensating`, `failed`. |
+| **SagaStatus** | The aggregate state of the distributed transaction: `pending_stock`, `pending_payment`, `payment_approved`, `payment_rejected`, `compensating`, `failed`, `confirmed`, `preparing`, `shipped`, `delivered`, `cancelled`, `completed`. The CG also persists granular progress fields: `PaymentStatus`, `StockReservationStatus`, `StockConfirmationStatus`, `OrdersConfirmationStatus`, `CartCleanupStatus`, `LastError`. |
 | **Technical Refund** | A compensatory action inside a saga to revert a successful payment if a subsequent saga step fails. NOT a user-facing product return or cancellation feature. |
 
 ## Saga Orchestration Flow
@@ -51,19 +63,39 @@ The checkout flow is a **saga orchestrated by `order-service`**. The saga progre
    → order-service calls catalog-service:
      POST /internal/stock/reservations/{checkoutGroupId}/confirm
    → order-service calls cart-service:
-     POST /internal/carts/{buyerId}/clear-purchased-items
-   → all orders in the group advance to "confirmada"
+      POST /internal/checkout-cleanup
+    → all orders in the group advance to "confirmada"
 
-4b. On payment rejected or downstream failure:
-   → order-service calls catalog-service:
-     POST /internal/stock/reservations/{checkoutGroupId}/release
-   → if payment was already processed, order-service calls payment-service:
-     POST /internal/payments/{paymentId}/refund  (technical compensatory refund)
-   → all orders in the group move to "pago rechazado" or "fallida"
-   → saga status = compensating → failed
+ 4b. On payment rejected:
+     → order-service calls catalog-service:
+       POST /internal/stock/reservations/{checkoutGroupId}/release
+     → all orders in the group move to "pago rechazado"
+     → saga status = payment_rejected
+
+  4c. On downstream failure after payment approved:
+     → order-service marks CheckoutGroup as compensating
+     → order-service attempts to compensate:
+       - Release stock: POST /internal/stock/reservations/{checkoutGroupId}/release
+       - Technical refund: POST /internal/payments/{paymentId}/refund
+     → possible outcomes:
+       - refund_pending: refund initiated but not confirmed as refunded
+       - failed: compensation could not complete, requires manual intervention
+     → saga status = compensating → refund_pending / failed
+     (NOT payment_rejected — the payment was approved, the failure was elsewhere)
 ```
 
 The saga is strictly sequential: Reserve → Pay → Confirm/Cleanup. No step executes before its predecessor succeeds. Compensation runs in reverse order of completed steps.
+
+### Payment outcome states (naming convention)
+
+The saga distinguishes these payment-related states explicitly:
+
+- **`payment_rejected`**: Payment was rejected by the provider (buyer's card declined, insufficient funds, etc.). Stock is released and orders are marked `pago rechazado`. This is the terminal state for the CheckoutGroup when the payment was the failure point.
+- **`compensating`**: Transient intermediate state while compensation is being executed (e.g., releasing stock after a downstream failure post-payment). The system is actively rolling back.
+- **`failed`**: Technical failure that could not be recovered, or compensation that could not complete. Requires manual intervention.
+- **`refund_pending`**: Compensation state when payment was already approved, but a subsequent saga step failed and a technical refund was initiated. The refund was requested but not yet confirmed as completed.
+
+These states are NOT interchangeable — `payment_rejected` means "user's payment didn't go through" while `compensating` → `failed` means "payment went through but something else broke and we couldn't fully clean up".
 
 ## Public Idempotency
 
@@ -79,20 +111,24 @@ buyer_id + idempotency_key => checkout_group_id
 
 ## Internal Idempotency Keys
 
-Each internal service call uses an idempotency key derived from `checkout_group_id` to prevent duplicate side effects on retry:
+Each internal service call uses a mechanism derived from `checkout_group_id` to prevent duplicate side effects on retry:
 
-| Internal Call | Idempotency-Key Value |
-|--------------|----------------------|
-| `POST /internal/stock/reservations` | `{checkout_group_id}` |
-| `POST /internal/stock/reservations/{checkoutGroupId}/confirm` | `confirm-{checkout_group_id}` |
-| `POST /internal/stock/reservations/{checkoutGroupId}/release` | `release-{checkout_group_id}` |
-| `POST /internal/payments` | `payment-{checkout_group_id}` |
-| `POST /internal/payments/{paymentId}/refund` | `refund-{checkout_group_id}` |
-| `POST /internal/carts/{buyerId}/clear-purchased-items` | `clear-cart-{checkout_group_id}` |
+| Operación | Mecanismo de idempotencia | Ubicación | Valor |
+|-----------|--------------------------|-----------|-------|
+| `POST /internal/stock/reservations` | Unique index en DB | `stock_reservations.checkout_group_id` | `{checkout_group_id}` |
+| `POST /internal/stock/reservations/{checkoutGroupId}/confirm` | Idempotente por estado de reserva | Path param `checkoutGroupId` + `reserved` state check | `{checkout_group_id}` |
+| `POST /internal/stock/reservations/{checkoutGroupId}/release` | Idempotente por estado de reserva | Path param `checkoutGroupId` + `reserved` state check | `{checkout_group_id}` |
+| `POST /internal/payments` | Unique index en DB | `payments.checkout_group_id` + `payments.idempotency_key` | `payment-{checkout_group_id}` |
+| `POST /internal/payments/{paymentId}/refund` | Idempotente por estado | Path param `paymentId` + estado `refund_pending`/`refunded` | `{checkout_group_id}` |
+| `POST /internal/checkout-cleanup` | Unique index en DB (`ON CONFLICT DO NOTHING`) | `cart_cleanup_operations.checkout_group_id` | `{checkout_group_id}` (body, NOT header) |
+
+**Importante**: Cart cleanup NO usa header `Idempotency-Key`. Usa `checkout_group_id` del body y unique constraint en `cart_cleanup_operations`. El resto de operaciones internas tampoco usan un header `Idempotency-Key` — cada una tiene su propio mecanismo (unique index o state check).
 
 ## Internal Service Contracts
 
-All internal endpoints require the `X-Internal-Service-Token` header for service-to-service authentication. No `Authorization` (Bearer JWT) header is used on internal paths.
+All internal endpoints called BY order-service (catalog, payment, cart) require the `X-Internal-Service-Token` header for service-to-service authentication. No `Authorization` (Bearer JWT) header is used on those outbound calls.
+
+**Exception**: The `/internal/*` endpoints ON order-service itself are callbacks, stubs, or legacy routes that are protected by JWT admin (Bearer token with role=admin), not by `X-Internal-Service-Token`. The main saga flow does not depend on incoming callbacks to order-service — order-service calls out to catalog, payment, and cart.
 
 ### 1. Stock Reservation (catalog-service)
 
@@ -103,7 +139,7 @@ Reserves stock for all items in a checkout group. All-or-nothing: if any item ha
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `{checkout_group_id}` |
+| Idempotencia | Unique index en `stock_reservations.checkout_group_id` |
 | Request Body | `StockReservationRequest` |
 | Success Response | `200 OK` |
 | Error Response | `409 Conflict` — `StockInsufficientError` |
@@ -115,9 +151,8 @@ Request body:
   "checkout_group_id": "uuid",
   "items": [
     {
-      "product_id": "uuid",
-      "quantity": 2,
-      "seller_id": "uuid"
+      "product_id": 10,
+      "quantity": 2
     }
   ]
 }
@@ -125,12 +160,12 @@ Request body:
 
 #### POST /internal/stock/reservations/{checkoutGroupId}/confirm
 
-Confirms a previously successful reservation after payment is approved. Deducts reserved stock permanently.
+Confirms a previously successful reservation after payment is approved. Does NOT deduct stock again — it only marks the existing reservation as confirmed/permanent (transition `reserved → confirmed`). The stock was already deducted during `reserveStock`.
 
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `confirm-{checkout_group_id}` |
+| Idempotencia | Path param `checkoutGroupId` + estado de reserva (`reserved`) |
 | Path Param | `checkoutGroupId` (UUID) |
 | Success Response | `200 OK` |
 
@@ -141,7 +176,7 @@ Releases a previously successful reservation on payment rejection or saga compen
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `release-{checkout_group_id}` |
+| Idempotencia | Path param `checkoutGroupId` + estado de reserva (`reserved`) |
 | Path Param | `checkoutGroupId` (UUID) |
 | Success Response | `200 OK` |
 
@@ -154,10 +189,10 @@ Creates a single payment intent for the entire checkout group.
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `payment-{checkout_group_id}` |
+| Idempotencia | Unique index en `payments.checkout_group_id` + `payments.idempotency_key` |
 | Request Body | `PaymentCreateRequest` |
-| Success Response | `200 OK` — `PaymentCreateResponse` |
-| Error Response | `402 Payment Required` / `4xx` |
+| Success Response | `201 Created` — `PaymentCreateResponse` (status: `approved`, `rejected`, or `pending`) |
+| Error Response | `4xx` / `5xx` |
 
 Request body:
 
@@ -165,7 +200,7 @@ Request body:
 {
   "checkout_group_id": "uuid",
   "amount": 18000.00,
-  "buyer_id": "uuid",
+  "buyer_id": 42,
   "idempotency_key": "payment-{checkout_group_id}"
 }
 ```
@@ -187,7 +222,7 @@ Technical compensatory refund only — used when the saga needs to revert a succ
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `refund-{checkout_group_id}` |
+| Idempotencia | Idempotente por estado de pago (`refund_pending`/`refunded`) |
 | Path Param | `paymentId` (UUID) |
 | Request Body | `TechnicalRefundRequest` |
 | Success Response | `200 OK` |
@@ -203,33 +238,37 @@ Request body:
 
 ### 3. Cart Cleanup (cart-service)
 
-#### POST /internal/carts/{buyerId}/clear-purchased-items
+#### POST /internal/checkout-cleanup
 
-Removes only the purchased quantities of items from the buyer's cart. This is NOT a clear-all operation — items added to the cart after checkout started are preserved. If a cart item's purchased quantity equals or exceeds its cart quantity, the item is removed. If the purchased quantity is less than the cart quantity, only the purchased quantity is subtracted.
+Removes only the purchased quantities of items from the buyer's cart. This is NOT a clear-all operation — items added to the cart after checkout started are preserved. If a cart item's purchased quantity equals or exceeds its cart quantity, the item is removed (hard delete via `Unscoped()`). If the purchased quantity is less than the cart quantity, only the purchased quantity is subtracted.
+
+Idempotency is enforced via a `cart_cleanup_operations` table with a unique index on `checkout_group_id`. The first INSERT wins (`ON CONFLICT DO NOTHING`); subsequent calls with the same `checkout_group_id` see `RowsAffected == 0` and return immediately without touching cart items.
+
+The operation runs in a single database transaction: (1) idempotency guard insert, (2) `SELECT ... FOR UPDATE` on matching cart items, (3) hard delete or quantity decrement.
 
 | Property | Value |
 |----------|-------|
 | Auth | `X-Internal-Service-Token` |
-| Idempotency-Key | `clear-cart-{checkout_group_id}` |
-| Path Param | `buyerId` (UUID) |
-| Request Body | `ClearPurchasedItemsRequest` |
+| Idempotency | Unique index on `checkout_group_id` in `cart_cleanup_operations` |
+| Request Body | `CleanupCartRequest` (`buyer_id`, `checkout_group_id`, `items[]`) |
 | Success Response | `200 OK` |
 
 Request body:
 
 ```json
 {
+  "buyer_id": 42,
   "checkout_group_id": "uuid",
   "items": [
     {
-      "product_id": "uuid",
+      "product_id": 1,
       "quantity": 2
     }
   ]
 }
 ```
 
-**Important**: Cart cleanup MUST use `POST`, never `DELETE` with a body. `DELETE` with a request body has ambiguous semantics and poor HTTP client support.
+**Important**: Cart cleanup uses `POST`, never `DELETE` with a body. `DELETE` with a request body has ambiguous semantics and poor HTTP client support. The endpoint is idempotent at the database level (unique constraint on `cart_cleanup_operations.checkout_group_id`), not via a header-based idempotency key.
 
 ## Public Reconciliation Endpoints
 
@@ -281,21 +320,20 @@ The saga architecture is delivered in 10 incremental phases. Each SDD is indepen
 | 3 | SDD3 | Catalog stock reservation — `POST /internal/stock/reservations` with all-or-nothing batch |
 | 4 | SDD4 | Order-service integrates reservation — calls reserve before payment, confirm/release on saga completion |
 | 5 | SDD5 | Payment by group — single payment per `checkout_group_id` with `payment-{checkout_group_id}` idempotency |
-| 6 | SDD6 | Continuation post-payment — order-service handles payment callback, advances order states |
-| 7 | SDD7 | Stock/order confirmation — confirm and release wired; order status updated after payment outcome |
-| 8 | SDD8 | Cart cleanup — `POST /internal/carts/{buyerId}/clear-purchased-items` integrated into saga |
-| 9 | SDD9 | Reconciliation + gateway — `GET /checkout/attempts/:idempotencyKey` and `GET /checkout-groups/:checkoutGroupId` via API Gateway |
-| 10 | SDD10 | Seller/admin privacy — seller sees own orders only; admin sees all with group view |
+| 6 | SDD6 | Continuation post-payment — order-service handles payment callbacks, advances order states and integrates stock confirm/release |
+| 7 | SDD7 | Cart cleanup — `POST /internal/checkout-cleanup` integrated into saga |
+| 8 | SDD8 | Reconciliation + gateway — `GET /checkout/attempts/:idempotencyKey` and `GET /checkout-groups/:checkoutGroupId` via API Gateway |
+| 9 | SDD9 | Seller/admin privacy — seller sees own orders only; admin sees all read-only via /admin/orders; user-only buyer endpoints reject admin |
 
 ## Consequences
 
 ### Positive
 
 - Explicit saga orchestration makes the checkout flow debuggable and testable at each step.
-- Internal contracts with idempotency keys prevent duplicate side effects across service retries.
+- Internal contracts with deterministic idempotency prevent duplicate side effects across service retries.
 - Cart cleanup by purchased quantities (not clear-all) preserves items the buyer added during checkout.
 - Single payment per group matches the buyer's mental model of one purchase.
-- Phased delivery (SDD0–SDD10) reduces integration risk and enables incremental verification.
+- Phased delivery (SDD0–SDD9) reduces integration risk and enables incremental verification.
 
 ### Negative
 
@@ -306,18 +344,31 @@ The saga architecture is delivered in 10 incremental phases. Each SDD is indepen
 
 ## Out of Scope
 
-The following are explicitly out of scope for this ADR and the SDD0–SDD10 sequence defined here:
+The following are explicitly out of scope for this ADR as a document — they are not architectural decisions covered here:
 
-- Business code implementation (handlers, repositories, services)
-- Database migrations
-- Functional tests
-- Full user-facing cancellation/refund feature
-- Payment provider integration specifics
-- Gateway routing implementation
-- Admin/seller UI changes
+- UI/backoffice frontend implementation
+- Integration with a real external payment provider (currently simulated)
+- Full user-facing cancellation/refund flow (partial: refund endpoint exists but `refund_pending → refunded` is not implemented)
+- Asynchronous jobs for closing refunds
+- Circuit breakers / retry with backoff
+- Coupon implementation (endpoints are stubs)
 
-These items may be addressed in future SDDs beyond SDD10 or in separate change proposals.
+> **Historical note**: The original ADR was written at SDD0 as a pure architecture contract. Subsequent SDDs (1–9) implemented the handlers, repositories, migrations, tests, and gateway routing. This document now reflects the implemented state, not just the original contract.
 
 ## References
 
 - ADR 0008: Checkout multi-vendedor con órdenes por vendedor agrupadas (read-only baseline)
+- [Documentación técnica del Checkout Saga](../architecture/checkout-saga.md)
+
+## Relación con el enunciado del TP
+Esta decisión implementa y cubre directamente requerimientos del TP Bazaar de IS2:
+- **Consistencia distribuida / APIs:** Implementando una Saga y evitando transacciones de base de datos distribuidas (2PC).
+- **Control de concurrencia:** El catálogo maneja transacciones de BD para no vender de más, en un contexto distribuido.
+- **Idempotencia:** Evita el doble pago usando la clave `payment-{checkout_group_id}` requerida.
+- **Manejo de errores:** Compensación de stock mediante `/release` en caso de fallos de pago.
+- **Microservicios independientes:** Bases separadas por servicio y comunicación vía API Gateway / eventos síncronos HTTP.
+
+## Bugs corregidos / Aprendizajes de la Implementación
+1. **Doble limpieza de carrito en reintentos tardíos**: Se observó que un retry muy lento borraba ítems que el usuario acababa de agregar. Se solucionó introduciendo la tabla `cart_cleanup_operations` y restando solo las *cantidades* abonadas en vez de hacer un "clear all".
+2. **Race condition del último ítem**: Operaciones de check de stock en memoria dejaban pasar race conditions; se movió la lógica a `SELECT FOR UPDATE` transaccional en `catalog-service`.
+3. **Privacidad del seller**: Un seller podía acceder a órdenes hermanas del mismo `CheckoutGroup`. Se solucionó aplicando chequeos estrictos de ownership contra `orders.seller_id` y retornando `404` en caso de mismatch para evitar enumeración (implementado en SDD9).
