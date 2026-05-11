@@ -51,17 +51,17 @@ E2E_IDEMPOTENCY_PATTERNS=(
 
 # ── Color helpers ────────────────────────────────────────────────────────────
 
-red()    { printf "\033[31m%s\033[0m\n" "$*"; }
-green()  { printf "\033[32m%s\033[0m\n" "$*"; }
+red() { printf "\033[31m%s\033[0m\n" "$*"; }
+green() { printf "\033[32m%s\033[0m\n" "$*"; }
 yellow() { printf "\033[33m%s\033[0m\n" "$*"; }
-blue()   { printf "\033[34m%s\033[0m\n" "$*"; }
+blue() { printf "\033[34m%s\033[0m\n" "$*"; }
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
-log_info()  { printf "[cleanup][info] %s\n" "$*"; }
-log_warn()  { yellow "[cleanup][warn] $*"; }
-log_error() { red    "[cleanup][error] $*"; }
-log_step()  { blue   "==== $* ===="; }
+log_info() { printf "[cleanup][info] %s\n" "$*"; }
+log_warn() { yellow "[cleanup][warn] $*"; }
+log_error() { red "[cleanup][error] $*"; }
+log_step() { blue "==== $* ===="; }
 
 # ── Run directory management ─────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ write_sql_file() {
   local phase="$2"
   local content="$3"
   local file="$RUN_DIR/${db_name}_${phase}.sql"
-  printf '%s\n' "$content" > "$file"
+  printf '%s\n' "$content" >"$file"
   log_info "Generated: $file"
   echo "$file"
 }
@@ -133,7 +133,7 @@ require_env() {
 write_report_header() {
   local report="$1"
   local title="$2"
-  cat > "$report" <<EOF
+  cat >"$report" <<EOF
 # Bazaar E2E Cleanup — $title
 
 - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -145,7 +145,7 @@ EOF
 write_report_section() {
   local report="$1"
   local section="$2"
-  printf '\n## %s\n\n' "$section" >> "$report"
+  printf '\n## %s\n\n' "$section" >>"$report"
 }
 
 write_report_row() {
@@ -153,7 +153,7 @@ write_report_row() {
   local table="$2"
   local count="$3"
   local extra="${4:-}"
-  printf '| `%s` | %s | %s |\n' "$table" "$count" "$extra" >> "$report"
+  printf '| `%s` | %s | %s |\n' "$table" "$count" "$extra" >>"$report"
 }
 
 # ── ID file management ──────────────────────────────────────────────────────
@@ -161,8 +161,8 @@ write_report_row() {
 write_id_list() {
   local file="$1"
   shift
-  printf '%s\n' "$@" > "$file"
-  log_info "Saved $(wc -l < "$file" | tr -d ' ') IDs to $file"
+  printf '%s\n' "$@" >"$file"
+  log_info "Saved $(wc -l <"$file" | tr -d ' ') IDs to $file"
 }
 
 read_id_list() {

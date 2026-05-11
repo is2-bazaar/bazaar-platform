@@ -48,7 +48,7 @@ run_psql() {
 generate_auth_dry_run() {
   log_step "Auth DB — Dry Run"
 
-  cat > "$RUN_DIR/auth_dry_run.sql" <<'SQLEOF'
+  cat >"$RUN_DIR/auth_dry_run.sql" <<'SQLEOF'
 -- ============================================================
 -- E2E Cleanup Dry Run — Auth DB
 -- ============================================================
@@ -118,7 +118,7 @@ SQLEOF
 generate_user_dry_run() {
   log_step "User DB — Dry Run"
 
-  cat > "$RUN_DIR/user_dry_run.sql" <<'SQLEOF'
+  cat >"$RUN_DIR/user_dry_run.sql" <<'SQLEOF'
 -- ============================================================
 -- E2E Cleanup Dry Run — User DB
 -- ============================================================
@@ -151,7 +151,7 @@ SQLEOF
 generate_catalog_dry_run() {
   log_step "Catalog DB — Dry Run"
 
-  cat > "$RUN_DIR/catalog_dry_run.sql" <<'SQLEOF'
+  cat >"$RUN_DIR/catalog_dry_run.sql" <<'SQLEOF'
 -- ============================================================
 -- E2E Cleanup Dry Run — Catalog DB
 -- ============================================================
@@ -220,7 +220,7 @@ SQLEOF
 generate_cart_dry_run() {
   log_step "Cart DB — Dry Run"
 
-  cat > "$RUN_DIR/cart_dry_run.sql" <<'SQLEOF'
+  cat >"$RUN_DIR/cart_dry_run.sql" <<'SQLEOF'
 -- ============================================================
 -- E2E Cleanup Dry Run — Cart DB
 -- ============================================================
@@ -270,7 +270,7 @@ SQLEOF
 generate_order_dry_run() {
   log_step "Order DB — Dry Run"
 
-  cat > "$RUN_DIR/order_dry_run.sql" <<'SQLEOF'
+  cat >"$RUN_DIR/order_dry_run.sql" <<'SQLEOF'
 -- ============================================================
 -- E2E Cleanup Dry Run — Order DB
 -- ============================================================
@@ -373,7 +373,7 @@ SQLEOF
 generate_payment_dry_run() {
   log_step "Payment DB — Dry Run"
 
-  cat > "$RUN_DIR/payment_dry_run.sql" <<'SQLEOF'
+  cat >"$RUN_DIR/payment_dry_run.sql" <<'SQLEOF'
 -- ============================================================
 -- E2E Cleanup Dry Run — Payment DB
 -- ============================================================
@@ -415,7 +415,7 @@ SQLEOF
 
 extract_ids_from_psql_output() {
   local csv_file="$1"
-  local column="$2"  # 1-indexed
+  local column="$2" # 1-indexed
   if [[ -f "$csv_file" ]]; then
     tail -n +2 "$csv_file" | cut -d',' -f"$column" | grep -v '^$' | sort -u || true
   fi
@@ -437,10 +437,10 @@ collect_e2e_ids_connected() {
       "$RUN_DIR/ids/auth_e2e_user_ids.csv"
 
     extract_ids_from_psql_output "$RUN_DIR/ids/auth_e2e_user_ids.csv" 1 \
-      > "$RUN_DIR/ids/e2e_user_ids.txt"
+      >"$RUN_DIR/ids/e2e_user_ids.txt"
 
     local user_count
-    user_count=$(wc -l < "$RUN_DIR/ids/e2e_user_ids.txt" | tr -d ' ')
+    user_count=$(wc -l <"$RUN_DIR/ids/e2e_user_ids.txt" | tr -d ' ')
     log_info "Found $user_count E2E users in auth DB"
   fi
 
@@ -452,10 +452,10 @@ collect_e2e_ids_connected() {
       "$RUN_DIR/ids/catalog_e2e_product_ids.csv"
 
     extract_ids_from_psql_output "$RUN_DIR/ids/catalog_e2e_product_ids.csv" 1 \
-      > "$RUN_DIR/ids/e2e_product_ids.txt"
+      >"$RUN_DIR/ids/e2e_product_ids.txt"
 
     local prod_count
-    prod_count=$(wc -l < "$RUN_DIR/ids/e2e_product_ids.txt" | tr -d ' ')
+    prod_count=$(wc -l <"$RUN_DIR/ids/e2e_product_ids.txt" | tr -d ' ')
     log_info "Found $prod_count E2E products in catalog DB"
 
     # E2E idempotency keys
@@ -464,10 +464,10 @@ collect_e2e_ids_connected() {
       "$RUN_DIR/ids/catalog_e2e_idempotency_ids.csv"
 
     extract_ids_from_psql_output "$RUN_DIR/ids/catalog_e2e_idempotency_ids.csv" 1 \
-      > "$RUN_DIR/ids/e2e_idempotency_ids.txt"
+      >"$RUN_DIR/ids/e2e_idempotency_ids.txt"
 
     local idem_count
-    idem_count=$(wc -l < "$RUN_DIR/ids/e2e_idempotency_ids.txt" | tr -d ' ')
+    idem_count=$(wc -l <"$RUN_DIR/ids/e2e_idempotency_ids.txt" | tr -d ' ')
     log_info "Found $idem_count E2E idempotency keys in catalog DB"
   fi
 
@@ -481,53 +481,53 @@ collect_e2e_ids_connected() {
       "$RUN_DIR/ids/order_e2e_cg_ids_by_key.csv"
 
     extract_ids_from_psql_output "$RUN_DIR/ids/order_e2e_cg_ids_by_key.csv" 1 \
-      > "$RUN_DIR/ids/e2e_checkout_group_ids.txt"
+      >"$RUN_DIR/ids/e2e_checkout_group_ids.txt"
 
     local cg_count
-    cg_count=$(wc -l < "$RUN_DIR/ids/e2e_checkout_group_ids.txt" | tr -d ' ')
+    cg_count=$(wc -l <"$RUN_DIR/ids/e2e_checkout_group_ids.txt" | tr -d ' ')
     log_info "Found $cg_count E2E checkout groups in order DB"
 
     # Also find by buyer_id if we have user IDs
     if [[ -f "$RUN_DIR/ids/e2e_user_ids.txt" && -s "$RUN_DIR/ids/e2e_user_ids.txt" ]]; then
       local ids
-      ids=$(tr '\n' ',' < "$RUN_DIR/ids/e2e_user_ids.txt" | sed 's/,$//')
+      ids=$(tr '\n' ',' <"$RUN_DIR/ids/e2e_user_ids.txt" | sed 's/,$//')
       run_psql "$order_url" \
         "SELECT id FROM checkout_groups WHERE buyer_id IN ($ids) ORDER BY id;" \
         "$RUN_DIR/ids/order_e2e_cg_ids_by_buyer.csv"
 
       extract_ids_from_psql_output "$RUN_DIR/ids/order_e2e_cg_ids_by_buyer.csv" 1 \
-        >> "$RUN_DIR/ids/e2e_checkout_group_ids.txt"
+        >>"$RUN_DIR/ids/e2e_checkout_group_ids.txt"
 
       sort -u "$RUN_DIR/ids/e2e_checkout_group_ids.txt" -o "$RUN_DIR/ids/e2e_checkout_group_ids.txt"
-      cg_count=$(wc -l < "$RUN_DIR/ids/e2e_checkout_group_ids.txt" | tr -d ' ')
+      cg_count=$(wc -l <"$RUN_DIR/ids/e2e_checkout_group_ids.txt" | tr -d ' ')
       log_info "Total E2E checkout groups (deduplicated): $cg_count"
     fi
 
     # E2E order IDs
     if [[ -f "$RUN_DIR/ids/e2e_user_ids.txt" && -s "$RUN_DIR/ids/e2e_user_ids.txt" ]]; then
       local user_ids
-      user_ids=$(tr '\n' ',' < "$RUN_DIR/ids/e2e_user_ids.txt" | sed 's/,$//')
+      user_ids=$(tr '\n' ',' <"$RUN_DIR/ids/e2e_user_ids.txt" | sed 's/,$//')
       run_psql "$order_url" \
         "SELECT id FROM orders WHERE buyer_id IN ($user_ids) OR seller_id IN ($user_ids) ORDER BY id;" \
         "$RUN_DIR/ids/order_e2e_order_ids.csv"
       extract_ids_from_psql_output "$RUN_DIR/ids/order_e2e_order_ids.csv" 1 \
-        > "$RUN_DIR/ids/e2e_order_ids.txt"
+        >"$RUN_DIR/ids/e2e_order_ids.txt"
     fi
 
     if [[ -f "$RUN_DIR/ids/e2e_checkout_group_ids.txt" && -s "$RUN_DIR/ids/e2e_checkout_group_ids.txt" ]]; then
       local cg_list
-      cg_list="'$(tr '\n' ',' < "$RUN_DIR/ids/e2e_checkout_group_ids.txt" | sed "s/,$//; s/,/','/g")'"
+      cg_list="'$(tr '\n' ',' <"$RUN_DIR/ids/e2e_checkout_group_ids.txt" | sed "s/,$//; s/,/','/g")'"
       run_psql "$order_url" \
         "SELECT id FROM orders WHERE checkout_group_id::text IN ($cg_list) ORDER BY id;" \
         "$RUN_DIR/ids/order_e2e_order_ids_by_cg.csv"
       extract_ids_from_psql_output "$RUN_DIR/ids/order_e2e_order_ids_by_cg.csv" 1 \
-        >> "$RUN_DIR/ids/e2e_order_ids.txt"
+        >>"$RUN_DIR/ids/e2e_order_ids.txt"
       sort -u "$RUN_DIR/ids/e2e_order_ids.txt" -o "$RUN_DIR/ids/e2e_order_ids.txt"
     fi
 
     local ord_count=0
     if [[ -f "$RUN_DIR/ids/e2e_order_ids.txt" ]]; then
-      ord_count=$(wc -l < "$RUN_DIR/ids/e2e_order_ids.txt" | tr -d ' ')
+      ord_count=$(wc -l <"$RUN_DIR/ids/e2e_order_ids.txt" | tr -d ' ')
     fi
     log_info "Found $ord_count E2E orders in order DB"
   fi
@@ -535,12 +535,12 @@ collect_e2e_ids_connected() {
   # Phase 4: Payment — collect E2E payment IDs
   if [[ -n "$payment_url" && -f "$RUN_DIR/ids/e2e_checkout_group_ids.txt" && -s "$RUN_DIR/ids/e2e_checkout_group_ids.txt" ]]; then
     local cg_list
-    cg_list="'$(tr '\n' ',' < "$RUN_DIR/ids/e2e_checkout_group_ids.txt" | sed "s/,$//; s/,/','/g")'"
+    cg_list="'$(tr '\n' ',' <"$RUN_DIR/ids/e2e_checkout_group_ids.txt" | sed "s/,$//; s/,/','/g")'"
     run_psql "$payment_url" \
       "SELECT id FROM payments WHERE checkout_group_id::text IN ($cg_list) ORDER BY id;" \
       "$RUN_DIR/ids/payment_e2e_payment_ids.csv"
     extract_ids_from_psql_output "$RUN_DIR/ids/payment_e2e_payment_ids.csv" 1 \
-      > "$RUN_DIR/ids/e2e_payment_ids.txt"
+      >"$RUN_DIR/ids/e2e_payment_ids.txt"
   fi
 }
 
@@ -554,7 +554,7 @@ generate_summary_report() {
   for f in "$RUN_DIR"/*.sql; do
     local name
     name="$(basename "$f")"
-    echo "- \`$name\`" >> "$report"
+    echo "- \`$name\`" >>"$report"
   done
 
   write_report_section "$report" "Collected ID Files"
@@ -565,14 +565,14 @@ generate_summary_report() {
       if [[ -f "$f" ]]; then
         local name lines
         name="$(basename "$f")"
-        lines=$(wc -l < "$f" | tr -d ' ')
-        echo "- \`$name\`: $lines entries" >> "$report"
+        lines=$(wc -l <"$f" | tr -d ' ')
+        echo "- \`$name\`: $lines entries" >>"$report"
       fi
     done
   fi
 
   write_report_section "$report" "Next Steps"
-  cat >> "$report" <<'EOF'
+  cat >>"$report" <<'EOF'
 1. Review the generated SQL files in this directory.
 2. If connected to DBs, review the CSV outputs.
 3. Verify that NO real users/products are included.
@@ -592,9 +592,9 @@ EOF
     local sql_file="$RUN_DIR/${db}_dry_run.sql"
     if [[ -f "$sql_file" ]]; then
       write_report_section "$report" "$db DB"
-      printf '```sql\n' >> "$report"
-      cat "$sql_file" >> "$report"
-      printf '\n```\n' >> "$report"
+      printf '```sql\n' >>"$report"
+      cat "$sql_file" >>"$report"
+      printf '\n```\n' >>"$report"
     fi
   done
 
@@ -635,29 +635,29 @@ main() {
       collect_e2e_ids_connected
 
       # Execute each SQL file if DB is connected
-      [[ -n "${AUTH_DB_URL:-}" && -f "$RUN_DIR/auth_dry_run.sql" ]] && \
-        log_info "Running auth dry-run..." && \
-        run_psql "$AUTH_DB_URL" "$(cat "$RUN_DIR/auth_dry_run.sql")" "$RUN_DIR/reports/auth_results.csv" && \
+      [[ -n "${AUTH_DB_URL:-}" && -f "$RUN_DIR/auth_dry_run.sql" ]] &&
+        log_info "Running auth dry-run..." &&
+        run_psql "$AUTH_DB_URL" "$(cat "$RUN_DIR/auth_dry_run.sql")" "$RUN_DIR/reports/auth_results.csv" &&
         log_info "Auth results: $RUN_DIR/reports/auth_results.csv"
 
-      [[ -n "${USER_DB_URL:-}" && -f "$RUN_DIR/user_dry_run.sql" ]] && \
-        log_info "Running user dry-run..." && \
+      [[ -n "${USER_DB_URL:-}" && -f "$RUN_DIR/user_dry_run.sql" ]] &&
+        log_info "Running user dry-run..." &&
         run_psql "$USER_DB_URL" "$(cat "$RUN_DIR/user_dry_run.sql")" "$RUN_DIR/reports/user_results.csv"
 
-      [[ -n "${CATALOG_DB_URL:-}" && -f "$RUN_DIR/catalog_dry_run.sql" ]] && \
-        log_info "Running catalog dry-run..." && \
+      [[ -n "${CATALOG_DB_URL:-}" && -f "$RUN_DIR/catalog_dry_run.sql" ]] &&
+        log_info "Running catalog dry-run..." &&
         run_psql "$CATALOG_DB_URL" "$(cat "$RUN_DIR/catalog_dry_run.sql")" "$RUN_DIR/reports/catalog_results.csv"
 
-      [[ -n "${CART_DB_URL:-}" && -f "$RUN_DIR/cart_dry_run.sql" ]] && \
-        log_info "Running cart dry-run..." && \
+      [[ -n "${CART_DB_URL:-}" && -f "$RUN_DIR/cart_dry_run.sql" ]] &&
+        log_info "Running cart dry-run..." &&
         run_psql "$CART_DB_URL" "$(cat "$RUN_DIR/cart_dry_run.sql")" "$RUN_DIR/reports/cart_results.csv"
 
-      [[ -n "${ORDER_DB_URL:-}" && -f "$RUN_DIR/order_dry_run.sql" ]] && \
-        log_info "Running order dry-run..." && \
+      [[ -n "${ORDER_DB_URL:-}" && -f "$RUN_DIR/order_dry_run.sql" ]] &&
+        log_info "Running order dry-run..." &&
         run_psql "$ORDER_DB_URL" "$(cat "$RUN_DIR/order_dry_run.sql")" "$RUN_DIR/reports/order_results.csv"
 
-      [[ -n "${PAYMENT_DB_URL:-}" && -f "$RUN_DIR/payment_dry_run.sql" ]] && \
-        log_info "Running payment dry-run..." && \
+      [[ -n "${PAYMENT_DB_URL:-}" && -f "$RUN_DIR/payment_dry_run.sql" ]] &&
+        log_info "Running payment dry-run..." &&
         run_psql "$PAYMENT_DB_URL" "$(cat "$RUN_DIR/payment_dry_run.sql")" "$RUN_DIR/reports/payment_results.csv"
     else
       log_warn "psql not found in PATH — cannot execute SELECTs directly."
