@@ -88,13 +88,13 @@ try:
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 except Exception:
-    print("ERROR: JSON parse failed")
+    print("ERROR: JSON parse failed", file=sys.stderr)
     sys.exit(1)
 cur = data
 for part in expr.split("."):
     if not part: continue
     if not isinstance(cur, dict) or part not in cur:
-        print(f"ERROR: field '{expr}' not found in JSON")
+        print(f"ERROR: field '{expr}' not found in JSON", file=sys.stderr)
         sys.exit(1)
     cur = cur[part]
 if cur is None:
@@ -285,8 +285,8 @@ if [[ "$buyer_code" != "201" ]]; then
   die "Buyer registration failed: HTTP $buyer_code"
 fi
 
-BUYER_TOKEN="$(json_val "$HTTP_DIR/register-buyer.json" ".access_token")"
-BUYER_ID="$(json_val "$HTTP_DIR/register-buyer.json" ".user_id")"
+BUYER_TOKEN="$(json_val "$HTTP_DIR/register-buyer.json" ".access_token")" || die "Failed to extract access_token from buyer registration"
+BUYER_ID="$(json_val "$HTTP_DIR/register-buyer.json" ".user_id")" || die "Failed to extract user_id from buyer registration"
 green "  Buyer: $BUYER_EMAIL (id=$BUYER_ID)"
 
 # -------------------------------------------------------------------
@@ -303,8 +303,8 @@ if [[ "$seller_code" != "201" ]]; then
   die "Seller registration failed: HTTP $seller_code"
 fi
 
-SELLER_TOKEN="$(json_val "$HTTP_DIR/register-seller.json" ".access_token")"
-SELLER_ID="$(json_val "$HTTP_DIR/register-seller.json" ".user_id")"
+SELLER_TOKEN="$(json_val "$HTTP_DIR/register-seller.json" ".access_token")" || die "Failed to extract access_token from seller registration"
+SELLER_ID="$(json_val "$HTTP_DIR/register-seller.json" ".user_id")" || die "Failed to extract user_id from seller registration"
 green "  Seller: $SELLER_EMAIL (id=$SELLER_ID)"
 
 # Create product
@@ -317,7 +317,7 @@ if [[ "$product_code" != "201" && "$product_code" != "200" ]]; then
   die "Product creation failed: HTTP $product_code"
 fi
 
-PRODUCT_ID="$(json_val "$HTTP_DIR/create-product.json" ".id")"
+PRODUCT_ID="$(json_val "$HTTP_DIR/create-product.json" ".id")" || die "Failed to extract id from product creation"
 green "  Product: $PRODUCT_LABEL (id=$PRODUCT_ID)"
 
 # -------------------------------------------------------------------
@@ -343,9 +343,9 @@ checkout_code="$(http_req "checkout" POST "$API_BASE/checkout" \
   '{"delivery_address":"Av MP 123","delivery_city":"CABA","delivery_province":"Buenos Aires"}' \
   "Authorization: Bearer $BUYER_TOKEN" "Idempotency-Key: $IDEM_KEY")"
 
-CHECKOUT_GROUP_ID="$(json_val "$HTTP_DIR/checkout.json" ".checkout_group_id")"
-PAYMENT_URL="$(json_val "$HTTP_DIR/checkout.json" ".payment_url")"
-CHECKOUT_STATUS="$(json_val "$HTTP_DIR/checkout.json" ".status")"
+CHECKOUT_GROUP_ID="$(json_val "$HTTP_DIR/checkout.json" ".checkout_group_id")" || die "Failed to extract checkout_group_id from checkout response"
+PAYMENT_URL="$(json_val "$HTTP_DIR/checkout.json" ".payment_url")" || die "Failed to extract payment_url from checkout response"
+CHECKOUT_STATUS="$(json_val "$HTTP_DIR/checkout.json" ".status")" || die "Failed to extract status from checkout response"
 
 if [[ "$checkout_code" != "201" ]]; then
   yellow "  Checkout returned HTTP $checkout_code (expected 201 for pending)"
