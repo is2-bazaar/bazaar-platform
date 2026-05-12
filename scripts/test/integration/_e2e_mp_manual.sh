@@ -59,7 +59,11 @@ die() {
 }
 
 http_req() {
-  local label="$1"; local method="$2"; local url="$3"; local payload="${4:-}"; shift 4 || true
+  local label="$1"
+  local method="$2"
+  local url="$3"
+  local payload="${4:-}"
+  shift 4 || true
   local headers_file="$HTTP_DIR/$label.headers"
   local body_file="$HTTP_DIR/$label.json"
   local code_file="$HTTP_DIR/$label.code"
@@ -78,7 +82,8 @@ http_req() {
 }
 
 json_val() {
-  local file="$1"; local expr="$2"
+  local file="$1"
+  local expr="$2"
   python3 - "$file" "$expr" <<'PY'
 import json, sys
 file_path = sys.argv[1]
@@ -256,12 +261,12 @@ validate_startup
 green "[1/5] Verifying services..."
 for svc in auth catalog cart order payment gateway; do
   case "$svc" in
-    auth)     url="$AUTH_BASE/readyz" ;;
-    catalog)  url="$CATALOG_BASE/readyz" ;;
-    cart)     url="$CART_BASE/readyz" ;;
-    order)    url="$ORDER_BASE/readyz" ;;
-    payment)  url="$PAYMENT_BASE/readyz" ;;
-    gateway)  url="$API_BASE/livez" ;;
+    auth) url="$AUTH_BASE/readyz" ;;
+    catalog) url="$CATALOG_BASE/readyz" ;;
+    cart) url="$CART_BASE/readyz" ;;
+    order) url="$ORDER_BASE/readyz" ;;
+    payment) url="$PAYMENT_BASE/readyz" ;;
+    gateway) url="$API_BASE/livez" ;;
   esac
   code="$(http_req "ready-$svc" GET "$url")"
   if [[ "$code" == "200" ]]; then
@@ -275,7 +280,7 @@ done
 # 1. Create buyer user
 # -------------------------------------------------------------------
 green "[2/5] Creating buyer user..."
-BUYER_USER="buyer-mp-$(( RANDOM % 9000 + 1000 ))"
+BUYER_USER="buyer-mp-$((RANDOM % 9000 + 1000))"
 BUYER_EMAIL="${BUYER_USER}@test.local"
 
 buyer_code="$(http_req "register-buyer" POST "$API_BASE/auth/register" \
@@ -293,7 +298,7 @@ green "  Buyer: $BUYER_EMAIL (id=$BUYER_ID)"
 # 2. Create seller + product
 # -------------------------------------------------------------------
 green "[3/5] Creating seller and product..."
-SELLER_USER="seller-mp-$(( RANDOM % 9000 + 1000 ))"
+SELLER_USER="seller-mp-$((RANDOM % 9000 + 1000))"
 SELLER_EMAIL="${SELLER_USER}@test.local"
 
 seller_code="$(http_req "register-seller" POST "$API_BASE/auth/register" \
@@ -349,7 +354,7 @@ CHECKOUT_STATUS="$(json_val "$HTTP_DIR/checkout.json" ".status")" || die "Failed
 
 if [[ "$checkout_code" != "201" ]]; then
   yellow "  Checkout returned HTTP $checkout_code (expected 201 for pending)"
-  body="$(tr '\n' ' ' < "$HTTP_DIR/checkout.json")"
+  body="$(tr '\n' ' ' <"$HTTP_DIR/checkout.json")"
   yellow "  Body: $body"
 fi
 
