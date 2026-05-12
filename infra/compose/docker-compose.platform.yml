@@ -23,11 +23,11 @@ services:
       GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS:-900}"
       GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS:-5}"
       GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS: "${GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS:-60}"
-      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
-      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
-      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
-      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
-      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8081}"
+      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:8080}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8083}"
+      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:8085}"
+      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:8086}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     ports:
@@ -41,7 +41,7 @@ services:
       - path: ${BAZAAR_AUTH_SERVICE_PATH}/.env.local
         required: false
     environment:
-      PORT: "${AUTH_SERVICE_PORT:-8080}"
+      PORT: "${AUTH_SERVICE_PORT:-8081}"
       DEPENDENCY_TARGETS: "${AUTH_SERVICE_DEPENDENCY_TARGETS:-auth-db:5432}"
       AUTH_DB_HOST: "${AUTH_DB_HOST:-auth-db}"
       AUTH_DB_PORT: "${AUTH_DB_PORT:-5432}"
@@ -80,7 +80,7 @@ services:
       dockerfile: Dockerfile
     environment:
       SERVICE_NAME: "catalog-service"
-      PORT: "${CATALOG_SERVICE_PORT:-8080}"
+      PORT: "${CATALOG_SERVICE_PORT:-8083}"
       DEPENDENCY_TARGETS: "${CATALOG_SERVICE_DEPENDENCY_TARGETS:-catalog-db:5432}"
       CATALOG_DB_HOST: "${CATALOG_DB_HOST:-catalog-db}"
       CATALOG_DB_PORT: "${CATALOG_DB_PORT:-5432}"
@@ -88,7 +88,7 @@ services:
       CATALOG_DB_PASSWORD: "${CATALOG_DB_PASSWORD:-postgres}"
       CATALOG_DB_NAME: "${CATALOG_DB_NAME:-catalog}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8081}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       catalog-db:
@@ -107,7 +107,7 @@ services:
         required: false
     environment:
       SERVICE_NAME: "cart-service"
-      PORT: "${CART_SERVICE_PORT:-8080}"
+      PORT: "${CART_SERVICE_PORT:-8085}"
       CART_DB_HOST: "${CART_DB_HOST:-cart-db}"
       CART_DB_PORT: "${CART_DB_PORT:-5432}"
       CART_DB_USER: "${CART_DB_USER:-postgres}"
@@ -116,8 +116,8 @@ services:
       # cart-service currently reads DB_DRIVER; expose it from the platform-level CART_DB_DRIVER knob.
       DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
-      DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8083}"
+      DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-catalog-service:8083}"
     depends_on:
       cart-db:
         condition: service_healthy
@@ -137,7 +137,7 @@ services:
         required: false
     environment:
       SERVICE_NAME: "order-service"
-      PORT: "${ORDER_SERVICE_PORT:-8080}"
+      PORT: "${ORDER_SERVICE_PORT:-8086}"
       ORDER_DB_HOST: "${ORDER_DB_HOST:-orders-db}"
       ORDER_DB_PORT: "${ORDER_DB_PORT:-5432}"
       ORDER_DB_USER: "${ORDER_DB_USER:-postgres}"
@@ -147,8 +147,8 @@ services:
       ORDER_DB_SSLMODE: "${ORDER_DB_SSLMODE:-disable}"
       ORDER_DB_CHANNEL_BINDING: "${ORDER_DB_CHANNEL_BINDING:-}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
-      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8083}"
+      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:8085}"
       PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payment-service:8080}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
@@ -161,7 +161,7 @@ services:
       payment-service:
         condition: service_started
     ports:
-      - "${ORDER_SERVICE_HOST_PORT:-18086}:8080"
+      - "${ORDER_SERVICE_HOST_PORT:-18084}:8080"
 
   payment-service:
     build:
@@ -174,7 +174,7 @@ services:
         required: false
     environment:
       SERVICE_NAME: "payment-service"
-      PORT: "8080"
+      PORT: "${PAYMENT_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${PAYMENT_SERVICE_DEPENDENCY_TARGETS:-payment-db:5432}"
       PAYMENT_DB_HOST: "${PAYMENT_DB_HOST:-payment-db}"
       PAYMENT_DB_PORT: "${PAYMENT_DB_PORT:-5432}"
@@ -185,8 +185,9 @@ services:
       PAYMENT_DB_SSLMODE: "${PAYMENT_DB_SSLMODE:-disable}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:8086}"
     ports:
-      - "${PAYMENT_SERVICE_PORT:-18084}:8080"
+      - "${PAYMENT_SERVICE_HOST_PORT:-18086}:8080"
     depends_on:
       payment-db:
         condition: service_healthy
