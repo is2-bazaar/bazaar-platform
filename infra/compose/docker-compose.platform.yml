@@ -117,6 +117,7 @@ services:
       DB_DRIVER: "${CART_DB_DRIVER:-postgres}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
     depends_on:
       cart-db:

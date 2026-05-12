@@ -49,6 +49,11 @@ CASE_NAMES=(
   "21_checkout_insufficient_stock"
   "22_checkout_idempotency"
   "23_checkout_reconciliation_privacy"
+  "24_mock_payment_checkout"
+  "25_mock_callback_approved"
+  "26_mock_callback_rejected"
+  "27_mock_callback_idempotency"
+  "28_mock_callback_state_transitions"
   "30_seller_orders"
   "31_seller_order_status"
   "32_buyer_orders_history"
@@ -56,6 +61,7 @@ CASE_NAMES=(
   "41_cancel_order_seller"
   "42_cancel_order_privacy"
   "43_cancel_order_idempotency"
+  "44_cancel_triggers_refund"
   "50_admin_readonly"
 )
 
@@ -67,6 +73,11 @@ CASE_FUNCS=(
   "case_21_checkout_insufficient_stock"
   "case_22_checkout_idempotency"
   "case_23_checkout_reconciliation_privacy"
+  "case_24_mock_payment_checkout"
+  "case_25_mock_callback_approved"
+  "case_26_mock_callback_rejected"
+  "case_27_mock_callback_idempotency"
+  "case_28_mock_callback_state_transitions"
   "case_30_seller_orders"
   "case_31_seller_order_status"
   "case_32_buyer_orders_history"
@@ -74,6 +85,7 @@ CASE_FUNCS=(
   "case_41_cancel_order_seller"
   "case_42_cancel_order_privacy"
   "case_43_cancel_order_idempotency"
+  "case_44_cancel_triggers_refund"
   "case_50_admin_readonly"
 )
 

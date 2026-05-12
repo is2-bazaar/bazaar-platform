@@ -9,6 +9,13 @@
 #   - MERCADOPAGO_ACCESS_TOKEN (sandbox TEST- token)
 #   - ngrok tunnel active for webhook delivery
 #
+# Modes:
+#   checkout (default) — Create buyer/seller/product, checkout, print MP URL
+#   ./scripts/test/integration/_e2e_mp_manual.sh checkout
+#
+#   verify CHECKOUT_GROUP_ID BUYER_TOKEN — Query state and display results
+#   ./scripts/test/integration/_e2e_mp_manual.sh verify <CHECKOUT_GROUP_ID> <BUYER_TOKEN>
+#
 # This script does NOT attempt to pay automatically.
 # It extracts the payment_url and prints manual steps.
 
@@ -36,16 +43,15 @@ RUN_ID="mp-$(date +%s)"
 
 OUT_DIR="tmp/e2e-mp-${RUN_ID}"
 HTTP_DIR="$OUT_DIR/http"
-STATE_DIR="$OUT_DIR/state"
-mkdir -p "$HTTP_DIR" "$STATE_DIR"
+mkdir -p "$HTTP_DIR"
 
 # -------------------------------------------------------------------
 # Helpers
 # -------------------------------------------------------------------
-red()    { printf "\033[31m%s\033[0m\n" "$*"; }
-green()  { printf "\033[32m%s\033[0m\n" "$*"; }
+red() { printf "\033[31m%s\033[0m\n" "$*"; }
+green() { printf "\033[32m%s\033[0m\n" "$*"; }
 yellow() { printf "\033[33m%s\033[0m\n" "$*"; }
-blue()   { printf "\033[34m%s\033[0m\n" "$*"; }
+blue() { printf "\033[34m%s\033[0m\n" "$*"; }
 
 die() {
   red "[FATAL] $*"
@@ -82,29 +88,170 @@ try:
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 except Exception:
-    print(""); sys.exit(0)
+    print("ERROR: JSON parse failed")
+    sys.exit(1)
 cur = data
 for part in expr.split("."):
     if not part: continue
     if not isinstance(cur, dict) or part not in cur:
-        print(""); sys.exit(0)
+        print(f"ERROR: field '{expr}' not found in JSON")
+        sys.exit(1)
     cur = cur[part]
-if cur is None: print("")
-elif isinstance(cur, bool): print("true" if cur else "false")
-elif isinstance(cur, (dict, list)): print(json.dumps(cur, ensure_ascii=False))
-else: print(cur)
+if cur is None:
+    print("null")
+elif isinstance(cur, bool):
+    print("true" if cur else "false")
+elif isinstance(cur, (dict, list)):
+    print(json.dumps(cur, ensure_ascii=False))
+else:
+    print(cur)
 PY
 }
 
 # -------------------------------------------------------------------
-# Pre-flight
+# Pre-flight validation
 # -------------------------------------------------------------------
+validate_startup() {
+  local provider="${PAYMENT_PROVIDER:-}"
+  local mp_token="${MERCADOPAGO_ACCESS_TOKEN:-}"
+  local webhook_url="${PAYMENT_WEBHOOK_URL:-}"
+  local internal_token="${INTERNAL_SERVICE_TOKEN:-}"
+
+  if [[ "$provider" != "mercadopago" ]]; then
+    die "PAYMENT_PROVIDER must be 'mercadopago', got '${provider:-unset}'"
+  fi
+
+  if [[ -z "$mp_token" ]]; then
+    die "MERCADOPAGO_ACCESS_TOKEN is not set or empty"
+  fi
+
+  if [[ "$webhook_url" != https://* ]]; then
+    die "PAYMENT_WEBHOOK_URL must start with https:// (required by MP for webhook delivery), got '${webhook_url:-unset}'"
+  fi
+
+  if [[ -z "$internal_token" ]]; then
+    die "INTERNAL_SERVICE_TOKEN is not set or empty"
+  fi
+
+  green "[validation] PAYMENT_PROVIDER=$provider"
+  green "[validation] MERCADOPAGO_ACCESS_TOKEN=***${mp_token: -4}"
+  green "[validation] PAYMENT_WEBHOOK_URL=$webhook_url"
+  green "[validation] INTERNAL_SERVICE_TOKEN=***${internal_token: -4}"
+}
+
+# -------------------------------------------------------------------
+# verify mode: query checkout group, buyer orders, cart, display state
+# -------------------------------------------------------------------
+do_verify() {
+  local cgid="$1"
+  local buyer_token="$2"
+
+  echo ""
+  blue "============================================"
+  blue "  VERIFY MODE"
+  blue "  Checkout Group: $cgid"
+  blue "============================================"
+  echo ""
+
+  # Query checkout group
+  green "[verify] Fetching checkout group..."
+  echo ""
+  echo "  curl -s \"${API_BASE}/checkout-groups/${cgid}\" \\"
+  echo "    -H \"Authorization: Bearer ${buyer_token}\""
+  echo ""
+  http_req "verify-cg" GET "$API_BASE/checkout-groups/$cgid" "" "Authorization: Bearer $buyer_token"
+  local cg_code
+  cg_code="$(cat "$HTTP_DIR/verify-cg.code")"
+  echo "  HTTP $cg_code"
+
+  if [[ "$cg_code" == "200" ]]; then
+    python3 -m json.tool "$HTTP_DIR/verify-cg.json" 2>/dev/null || cat "$HTTP_DIR/verify-cg.json"
+  else
+    yellow "  Response:"
+    python3 -m json.tool "$HTTP_DIR/verify-cg.json" 2>/dev/null || cat "$HTTP_DIR/verify-cg.json"
+  fi
+
+  # Query buyer orders
+  echo ""
+  green "[verify] Fetching buyer orders..."
+  echo ""
+  echo "  curl -s \"${API_BASE}/orders/\" \\"
+  echo "    -H \"Authorization: Bearer ${buyer_token}\""
+  echo ""
+  http_req "verify-orders" GET "$API_BASE/orders/" "" "Authorization: Bearer $buyer_token"
+  local orders_code
+  orders_code="$(cat "$HTTP_DIR/verify-orders.code")"
+  echo "  HTTP $orders_code"
+
+  if [[ "$orders_code" == "200" ]]; then
+    local order_count
+    order_count="$(python3 -c "
+import json
+with open('${HTTP_DIR}/verify-orders.json') as f:
+    data = json.load(f)
+orders = data.get('orders', data.get('data', {}).get('orders', []))
+print(len(orders))
+" 2>/dev/null || echo "0")"
+    echo "  Order count: $order_count"
+    python3 -m json.tool "$HTTP_DIR/verify-orders.json" 2>/dev/null || cat "$HTTP_DIR/verify-orders.json"
+  else
+    cat "$HTTP_DIR/verify-orders.json" 2>/dev/null || true
+  fi
+
+  # Query cart
+  echo ""
+  green "[verify] Fetching buyer cart..."
+  echo ""
+  echo "  curl -s \"${API_BASE}/cart/\" \\"
+  echo "    -H \"Authorization: Bearer ${buyer_token}\""
+  echo ""
+  http_req "verify-cart" GET "$API_BASE/cart/" "" "Authorization: Bearer $buyer_token"
+  local cart_code
+  cart_code="$(cat "$HTTP_DIR/verify-cart.code")"
+  echo "  HTTP $cart_code"
+
+  if [[ "$cart_code" == "200" ]]; then
+    local cart_items
+    cart_items="$(python3 -c "
+import json
+with open('${HTTP_DIR}/verify-cart.json') as f:
+    data = json.load(f)
+items = data.get('items', data.get('data', {}).get('items', []))
+print(len(items))
+" 2>/dev/null || echo "0")"
+    echo "  Cart item count: $cart_items"
+    python3 -m json.tool "$HTTP_DIR/verify-cart.json" 2>/dev/null || cat "$HTTP_DIR/verify-cart.json"
+  else
+    cat "$HTTP_DIR/verify-cart.json" 2>/dev/null || true
+  fi
+
+  echo ""
+  blue "============================================"
+  green "  Verify complete. Raw outputs: $HTTP_DIR/"
+  blue "============================================"
+}
+
+# -------------------------------------------------------------------
+# Main: dispatch by mode
+# -------------------------------------------------------------------
+MODE="${1:-checkout}"
+
+if [[ "$MODE" == "verify" ]]; then
+  if [[ $# -lt 3 ]]; then
+    die "Usage: $0 verify <CHECKOUT_GROUP_ID> <BUYER_TOKEN>"
+  fi
+  do_verify "$2" "$3"
+  exit 0
+fi
+
 echo ""
 blue "============================================"
 blue "  Mercado Pago Manual E2E Test"
 blue "  RUN_ID: $RUN_ID"
 blue "============================================"
 echo ""
+
+validate_startup
 
 green "[1/5] Verifying services..."
 for svc in auth catalog cart order payment gateway; do
@@ -210,7 +357,7 @@ green "  Checkout group: $CHECKOUT_GROUP_ID"
 green "  Status: $CHECKOUT_STATUS"
 
 # -------------------------------------------------------------------
-# Results
+# Results — print real curl commands, not internal helper aliases
 # -------------------------------------------------------------------
 echo ""
 blue "============================================"
@@ -248,13 +395,25 @@ if [[ -n "$PAYMENT_URL" && "$PAYMENT_URL" != "null" ]]; then
   echo ""
   echo "4. Check checkout group status:"
   echo ""
-  green "   http_req \"checkout-status\" GET \"$API_BASE/checkout-groups/$CHECKOUT_GROUP_ID\" \"\" \"Authorization: Bearer \$BUYER_TOKEN\""
+  green "   curl -s \"$API_BASE/checkout-groups/$CHECKOUT_GROUP_ID\" \\"
+  green "     -H \"Authorization: Bearer \$BUYER_TOKEN\" | python3 -m json.tool"
   echo ""
-  echo "   Or with curl:"
+  echo "5. Check buyer orders:"
   echo ""
-  green "   curl -s \"$API_BASE/checkout-groups/$CHECKOUT_GROUP_ID\" -H \"Authorization: Bearer $BUYER_TOKEN\" | python3 -m json.tool"
+  green "   curl -s \"$API_BASE/orders/\" \\"
+  green "     -H \"Authorization: Bearer \$BUYER_TOKEN\" | python3 -m json.tool"
+  echo ""
+  echo "6. Check cart status:"
+  echo ""
+  green "   curl -s \"$API_BASE/cart/\" \\"
+  green "     -H \"Authorization: Bearer \$BUYER_TOKEN\" | python3 -m json.tool"
   echo ""
   blue "============================================"
+  echo ""
+  echo "Quick verify with this script:"
+  echo ""
+  green "  $0 verify $CHECKOUT_GROUP_ID \"$BUYER_TOKEN\""
+  echo ""
 else
   yellow "No payment_url found in response. Checkout may have resolved immediately."
   yellow "Check the response file: $HTTP_DIR/checkout.json"
