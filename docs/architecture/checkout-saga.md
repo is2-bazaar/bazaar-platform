@@ -1,5 +1,7 @@
 # Checkout Saga
 
+> Editar diagramas: https://mermaid.live
+
 Documentación verificada contra la implementación real en:
 
 - `bazaar-platform`
@@ -204,6 +206,204 @@ sequenceDiagram
     Order-->>Gateway: estado actual
 ```
 
+### 5. Pago pendiente (estado `pending_payment`)
+
+El flujo ocurre cuando `payment-service` responde `201` con `status: "pending"`. El comprador es redirigido al provider externo para completar el pago.
+
+- el stock ya está reservado;
+- las órdenes quedan en `pendiente de pago`;
+- el carrito NO se limpia todavía;
+- `order-service` responde `201 { status: pending_payment, payment_url }`;
+- el comprador debe completar el pago en el provider externo.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Buyer as Buyer / Mobile
+    participant Gateway as API Gateway
+    participant Order as order-service
+    participant OrderDB as Order DB
+    participant Cart as cart-service
+    participant CartDB as Cart DB
+    participant Catalog as catalog-service
+    participant CatalogDB as Catalog DB
+    participant Payment as payment-service
+    participant PaymentDB as Payment DB
+
+    Buyer->>Gateway: POST /checkout<br/>JWT + Idempotency-Key
+    Gateway->>Order: POST /checkout<br/>X-User-ID
+
+    Order->>OrderDB: FindOrCreate CheckoutGroup<br/>(buyer_id + idempotency_key)
+
+    Order->>Cart: GET /cart
+    Cart->>CartDB: Read buyer cart
+    Cart-->>Order: Cart items
+
+    Order->>Catalog: Validate product availability
+    Catalog->>CatalogDB: Read products / stock
+    Catalog-->>Order: Availability OK
+
+    Order->>OrderDB: Create one Order per seller<br/>status = pendiente de pago
+
+    Order->>Catalog: POST /internal/stock/reservations
+    Catalog->>CatalogDB: SELECT FOR UPDATE products
+    Catalog->>CatalogDB: Deduct stock + create reservation<br/>status = reserved
+    Catalog-->>Order: Reservation reserved
+
+    Order->>OrderDB: Update stock_reservation_status = reserved
+
+    Order->>Payment: POST /internal/payments<br/>Idempotency-Key: payment-{checkout_group_id}
+    Payment->>PaymentDB: Create or return existing payment
+    Payment-->>Order: Payment status = pending<br/>payment_url
+
+    Order->>OrderDB: Save payment_id<br/>payment_status = pending<br/>checkout_group.status = pending_payment
+
+    Order-->>Gateway: 201 CheckoutResponse<br/>status = pending_payment<br/>payment_url
+    Gateway-->>Buyer: Continue payment in provider
+
+    Note over Order,Catalog: Stock remains reserved while payment is pending.
+    Note over Order,Cart: Cart is not cleaned yet.
+    Note over Order,OrderDB: Orders remain pendiente de pago.
+```
+
+### 6. Pago aprobado (estado `payment_approved`)
+
+El flujo ocurre cuando `payment-service` responde `201` con `status: "approved"`. El pago se concreta inmediatamente.
+
+- el stock ya estaba reservado;
+- se confirma la reserva (`reserved -> confirmed`);
+- las órdenes pasan a `confirmada`;
+- se limpia el carrito;
+- `order-service` responde `201 { status: confirmed }`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Buyer as Buyer / Mobile
+    participant Gateway as API Gateway
+    participant Order as order-service
+    participant OrderDB as Order DB
+    participant Cart as cart-service
+    participant CartDB as Cart DB
+    participant Catalog as catalog-service
+    participant CatalogDB as Catalog DB
+    participant Payment as payment-service
+    participant PaymentDB as Payment DB
+
+    Buyer->>Gateway: POST /checkout<br/>JWT + Idempotency-Key
+    Gateway->>Order: POST /checkout<br/>X-User-ID
+
+    Order->>OrderDB: FindOrCreate CheckoutGroup<br/>(buyer_id + idempotency_key)
+
+    Order->>Cart: GET /cart
+    Cart->>CartDB: Read buyer cart
+    Cart-->>Order: Cart items
+
+    Order->>Catalog: Validate product availability
+    Catalog->>CatalogDB: Read products / stock
+    Catalog-->>Order: Availability OK
+
+    Order->>OrderDB: Create one Order per seller<br/>status = pendiente de pago
+
+    Order->>Catalog: POST /internal/stock/reservations
+    Catalog->>CatalogDB: SELECT FOR UPDATE products
+    Catalog->>CatalogDB: Deduct stock + create reservation<br/>status = reserved
+    Catalog-->>Order: Reservation reserved
+
+    Order->>OrderDB: Update stock_reservation_status = reserved
+
+    Order->>Payment: POST /internal/payments<br/>Idempotency-Key: payment-{checkout_group_id}
+    Payment->>PaymentDB: Create or return existing payment
+    Payment-->>Order: Payment status = approved
+
+    Order->>OrderDB: Save payment_id<br/>payment_status = approved<br/>checkout_group.status = payment_approved
+
+    Order->>Catalog: POST /internal/stock/reservations/{checkoutGroupId}/confirm
+    Catalog->>CatalogDB: Mark reservation confirmed<br/>does not deduct stock again
+    Catalog-->>Order: Reservation confirmed
+
+    Order->>OrderDB: Mark all orders as confirmada
+    Order->>OrderDB: stock_confirmation_status = confirmed<br/>orders_confirmation_status = confirmed<br/>checkout_group.status = confirmed
+
+    Order->>Cart: POST /internal/checkout-cleanup
+    Cart->>CartDB: Remove purchased quantities<br/>idempotent by checkout_group_id
+    Cart-->>Order: Cleanup OK
+
+    Order->>OrderDB: cart_cleanup_status = cleared
+
+    Order-->>Gateway: 201 CheckoutResponse<br/>status = confirmed
+    Gateway-->>Buyer: Purchase confirmed
+
+    Note over Catalog,CatalogDB: Stock was already deducted during reservation.
+    Note over Order,Cart: Cart cleanup happens only after approved payment and confirmed orders.
+```
+
+### 7. Pago rechazado (estado `payment_rejected`)
+
+El flujo ocurre cuando `payment-service` responde `201` con `status: "rejected"`. El pago falló en el provider externo.
+
+- el stock estaba reservado pero se libera;
+- las órdenes quedan en `pago rechazado`;
+- el carrito NO se limpia;
+- `order-service` responde `201 { status: payment_rejected }`.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Buyer as Buyer / Mobile
+    participant Gateway as API Gateway
+    participant Order as order-service
+    participant OrderDB as Order DB
+    participant Cart as cart-service
+    participant CartDB as Cart DB
+    participant Catalog as catalog-service
+    participant CatalogDB as Catalog DB
+    participant Payment as payment-service
+    participant PaymentDB as Payment DB
+
+    Buyer->>Gateway: POST /checkout<br/>JWT + Idempotency-Key
+    Gateway->>Order: POST /checkout<br/>X-User-ID
+
+    Order->>OrderDB: FindOrCreate CheckoutGroup<br/>(buyer_id + idempotency_key)
+
+    Order->>Cart: GET /cart
+    Cart->>CartDB: Read buyer cart
+    Cart-->>Order: Cart items
+
+    Order->>Catalog: Validate product availability
+    Catalog->>CatalogDB: Read products / stock
+    Catalog-->>Order: Availability OK
+
+    Order->>OrderDB: Create one Order per seller<br/>status = pendiente de pago
+
+    Order->>Catalog: POST /internal/stock/reservations
+    Catalog->>CatalogDB: SELECT FOR UPDATE products
+    Catalog->>CatalogDB: Deduct stock + create reservation<br/>status = reserved
+    Catalog-->>Order: Reservation reserved
+
+    Order->>OrderDB: Update stock_reservation_status = reserved
+
+    Order->>Payment: POST /internal/payments<br/>Idempotency-Key: payment-{checkout_group_id}
+    Payment->>PaymentDB: Create or return existing payment
+    Payment-->>Order: Payment status = rejected
+
+    Order->>OrderDB: Save payment_id<br/>payment_status = rejected<br/>checkout_group.status = payment_rejected
+
+    Order->>Catalog: POST /internal/stock/reservations/{checkoutGroupId}/release
+    Catalog->>CatalogDB: SELECT FOR UPDATE reserved products
+    Catalog->>CatalogDB: Restore reserved stock<br/>reservation.status = released
+    Catalog-->>Order: Reservation released
+
+    Order->>OrderDB: Mark all orders as pago rechazado
+    Order->>OrderDB: stock_reservation_status = released<br/>checkout_group.status = payment_rejected
+
+    Order-->>Gateway: 201 CheckoutResponse<br/>status = payment_rejected
+    Gateway-->>Buyer: Payment rejected
+
+    Note over Order,Cart: Cart is not cleaned.
+    Note over Catalog,CatalogDB: Stock is restored because payment failed.
+```
+
 ## Matriz Contra Enunciado Del TP
 
 | Criterio del enunciado | Cómo se resuelve | Endpoint/servicio | Estado | Observaciones |
@@ -221,18 +421,18 @@ sequenceDiagram
 
 | Tema | Estado | Detalle verificado |
 |---|---|---|
-| `POST /checkout` | Implementado pero mal documentado | controller real devuelve `201 Created`, no `200` |
+| `POST /checkout` | Implementado; documentación corregida | controller real devuelve `201 Created`, no `200` |
 | `POST /checkout/quote` | Implementado parcialmente | funciona y es read-only; `coupon_code` todavía se rechaza |
-| stock `reserve/confirm/release` | Implementado pero mal documentado | `reserve` descuenta; `confirm` no descuenta; `release` solo restaura si estaba `reserved` |
-| cleanup de carrito | Implementado pero mal documentado | endpoint real `POST /internal/checkout-cleanup`; body `buyer_id`, `checkout_group_id`, `items[]`; idempotencia por tabla `cart_cleanup_operations` |
-| payment rejected | Implementado pero mal documentado | rechazo va en body `status: rejected` con `201`; no `HTTP 402` |
+| stock `reserve/confirm/release` | Implementado; documentación corregida | `reserve` descuenta; `confirm` no descuenta; `release` solo restaura si estaba `reserved` |
+| cleanup de carrito | Implementado; documentación corregida | endpoint real `POST /internal/checkout-cleanup`; body `buyer_id`, `checkout_group_id`, `items[]`; idempotencia por tabla `cart_cleanup_operations` |
+| payment rejected | Implementado; documentación corregida | rechazo va en body `status: rejected` con `201`; no `HTTP 402` |
 | estados reales de pago | Implementado | `pending`, `approved`, `rejected`, `refund_pending`, `refunded`, `refund_failed`, `preference_failed` |
 | refund técnico en payment-service | Implementado | `RefundPayment` puede completar `approved -> refund_pending -> refunded` y notifica a `order-service` por callback |
-| refund automático desde order-service | Implementado parcialmente | la arquitectura lo contempla, pero `order-service` no tiene hoy una integración runtime cableada para dispararlo automáticamente en checkout/cancelación |
-| buyer `GET /orders?status=` | Implementado pero mal documentado | el filtro por estado sí existe en controller y repository |
+| refund automático desde order-service | Parcial / pendiente | la arquitectura lo contempla, pero `order-service` no tiene hoy una integración runtime cableada para dispararlo automáticamente en checkout/cancelación |
+| buyer `GET /orders?status=` | Implementado; documentación corregida | el filtro por estado sí existe en controller y repository |
 | mobile checkout E2E | Pendiente | el tab `cart` es placeholder y no ejecuta checkout real |
 | backoffice órdenes E2E | Pendiente | `adminService.ts` mantiene órdenes/métricas sobre mocks |
-| OpenAPI manual del order-service | Implementado pero mal documentado | tenía drift en request names, códigos HTTP, cleanup, quote y contratos internos |
+| OpenAPI manual del order-service | Documentación corregida | request names, códigos HTTP, cleanup, quote y contratos internos alineados con la implementación real |
 
 ## Rutas Verificadas En Gateway
 

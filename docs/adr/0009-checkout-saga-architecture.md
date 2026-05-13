@@ -164,6 +164,23 @@ Durante esta revisión contra código real se corrigieron estos puntos que estab
 9. Buyer `GET /orders` sí soporta filtro por `status`.
 10. El refund técnico puede llegar a `refunded` en `payment-service`; lo que sigue parcial es el disparo automático end-to-end desde `order-service`.
 
+## Estado real vs pendiente
+
+| Tema | Estado | Detalle verificado |
+|---|---|---|
+| `POST /checkout` | Implementado; documentación corregida | controller real devuelve `201 Created`, no `200` |
+| `POST /checkout/quote` | Implementado parcialmente | funciona y es read-only; `coupon_code` todavía se rechaza |
+| stock `reserve/confirm/release` | Implementado; documentación corregida | `reserve` descuenta; `confirm` no descuenta; `release` solo restaura si estaba `reserved` |
+| cleanup de carrito | Implementado; documentación corregida | endpoint real `POST /internal/checkout-cleanup`; body `buyer_id`, `checkout_group_id`, `items[]`; idempotencia por tabla `cart_cleanup_operations` |
+| payment rejected | Implementado; documentación corregida | rechazo va en body `status: rejected`; no `HTTP 402` |
+| estados reales de pago | Implementado | `pending`, `approved`, `rejected`, `refund_pending`, `refunded`, `refund_failed`, `preference_failed` |
+| refund técnico en payment-service | Implementado | `RefundPayment` puede completar `approved -> refund_pending -> refunded` y notifica a `order-service` por callback |
+| refund automático desde order-service | Parcial / pendiente | la arquitectura lo contempla, pero no debe afirmarse como flujo automático cableado si no está verificado en runtime |
+| buyer `GET /orders?status=` | Implementado; documentación corregida | el filtro por estado existe en controller y repository |
+| mobile checkout E2E | Pendiente | fuera de alcance para este ajuste documental |
+| backoffice órdenes E2E | Pendiente | fuera de alcance para este ajuste documental |
+| OpenAPI manual del order-service | Documentación corregida | request names, códigos HTTP, cleanup, quote y contratos internos alineados con la implementación real |
+
 ## Fuera de alcance
 
 Esta ADR no decide:
