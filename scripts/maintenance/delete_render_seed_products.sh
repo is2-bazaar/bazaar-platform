@@ -12,7 +12,7 @@ set -euo pipefail
 #   - Requires CONFIRMATION="CONFIRMO BORRAR PRODUCTOS SEED RENDER" (unless DRY_RUN)
 #   - Lists products via API and shows count + sample BEFORE deleting
 #   - Creates JSON backup in run directory before DELETE
-#   - Never deletes non-seed products (filters by name prefix only)
+#   - Never deletes non-seed products (requires RENDER_SEED batch= marker in description)
 #   - Dry-run shows what would be deleted without touching data
 #
 # Usage:
@@ -222,39 +222,10 @@ main() {
   local backup_file="$run_dir/backup/render_seed_products.json"
   log_step "Creating JSON backup: $backup_file"
 
-  # Save the full list response(s) as backup
-  {
-    echo "["
-    local first=true
-    local page=1
-    while [[ $page -le "${total_pages:-1}" ]]; do
-      local page_file="$SEED_HTTP_DIR/seed-delete-list-p${page}.json"
-      if [[ ! -f "$page_file" ]]; then
-        page_file="$list_file"
-      fi
+  local backup_count
+  backup_count="$(seed_backup_filtered_products "$SEED_HTTP_DIR" "$marker" "seed-delete-list" "$backup_file")"
 
-      local page_data
-      page_data="$(seed_json_get "$page_file" "products")"
-      if [[ -n "$page_data" && "$page_data" != "null" ]]; then
-        # Strip outer brackets and join
-        if $first; then
-          printf '%s' "$page_data" | sed 's/^\[//;s/\]$//' >>"$backup_file"
-          first=false
-        else
-          printf ',' >>"$backup_file"
-          printf '%s' "$page_data" | sed 's/^\[//;s/\]$//' >>"$backup_file"
-        fi
-      fi
-
-      if [[ "$page_file" == "$list_file" ]]; then
-        break
-      fi
-      page=$((page + 1))
-    done
-    echo "]" >>"$backup_file"
-  }
-
-  log_info "Backup saved to: $backup_file"
+  log_info "Backup saved: $backup_count products written to $backup_file"
 
   # ── Final warning ───────────────────────────────────────────────────────────
 
@@ -317,17 +288,23 @@ main() {
 
   # ── Verify via API list ─────────────────────────────────────────────────────
 
-  log_step "Verifying deletion..."
+  log_step "Verifying deletion (fetching all pages)..."
 
-  code="$(
-    seed_api_req "seed-delete-verify" GET "/catalog/me/products?page=1&page_size=100" >/dev/null
-    printf '%s' "$?"
-  )"
-  local remaining=0
+  seed_api_req "seed-delete-verify" GET "/catalog/me/products?page=1&page_size=100" >/dev/null
 
-  if [[ -f "$SEED_HTTP_DIR/seed-delete-verify.json" ]]; then
-    remaining="$(seed_count_products_by_desc_marker "$SEED_HTTP_DIR/seed-delete-verify.json" "$marker")"
+  local verify_total_pages
+  verify_total_pages="$(seed_json_get "$SEED_HTTP_DIR/seed-delete-verify.json" "total_pages")"
+  verify_total_pages="${verify_total_pages:-1}"
+
+  if [[ "$verify_total_pages" -gt 1 ]]; then
+    seed_fetch_all_products "seed-delete-verify" "$verify_total_pages" 100 >/dev/null
   fi
+
+  local remaining
+  remaining="$(seed_count_products_across_pages "seed-delete-verify" "$marker" "$verify_total_pages")"
+  remaining="${remaining:-0}"
+
+  log_info "Products remaining after deletion: $remaining"
 
   # ── Report ──────────────────────────────────────────────────────────────────
 
@@ -371,13 +348,20 @@ main() {
   echo "  Run dir:    $run_dir"
   echo ""
 
-  if [[ "$remaining" != "0" ]]; then
-    yellow "  WARNING: $remaining products still match the criteria."
-    log_info "This may indicate partial deletion. Check the log: $delete_log"
+  local had_error=0
+
+  if [[ "$remaining" -gt 0 ]]; then
+    red "  ERROR: $remaining products still match the criteria after deletion."
+    log_info "This indicates incomplete deletion. Check the log: $delete_log"
+    had_error=1
   fi
 
   if [[ "$del_failed" -gt 0 ]]; then
     red "  ERROR: $del_failed deletions failed. Check the log and HTTP traces."
+    had_error=1
+  fi
+
+  if [[ "$had_error" -eq 1 ]]; then
     exit 1
   fi
 

@@ -86,6 +86,28 @@ check_curl() {
   fi
 }
 
+validate_seed_products_count() {
+  local count="${1:-50}"
+
+  if ! [[ "$count" =~ ^[0-9]+$ ]]; then
+    red "[seed][error]  SEED_PRODUCTS_COUNT must be a positive integer. Got: '${count}'"
+    log_info "Set a valid number, e.g.: export SEED_PRODUCTS_COUNT=50"
+    exit 1
+  fi
+
+  if [[ "$count" -eq 0 ]]; then
+    red "[seed][error]  SEED_PRODUCTS_COUNT must be at least 1. Got: 0"
+    exit 1
+  fi
+
+  if [[ "$count" -gt 50 ]]; then
+    yellow "[seed][warn]  SEED_PRODUCTS_COUNT=${count} exceeds maximum (50). Clamping to 50."
+    count=50
+  fi
+
+  echo "$count"
+}
+
 require_api_base_url() {
   if [[ -z "${RENDER_API_BASE_URL:-}" ]]; then
     red "[seed][error]  RENDER_API_BASE_URL is not set."
@@ -170,7 +192,7 @@ seed_api_req() {
   local body_file="$SEED_HTTP_DIR/${label}.json"
   local code_file="$SEED_HTTP_DIR/${label}.code"
 
-  local args=(curl -sS -X "$method" "$url" -o "$body_file" -w '%{http_code}' -H "Accept: application/json")
+  local args=(curl -sS --connect-timeout 10 --max-time 60 -X "$method" "$url" -o "$body_file" -w '%{http_code}' -H "Accept: application/json")
 
   if [[ -n "${SEED_TOKEN:-}" ]]; then
     args+=(-H "Authorization: Bearer ${SEED_TOKEN}")
@@ -283,9 +305,9 @@ PY
 seed_product_batch_marker() {
   local batch="${1:-}"
   if [[ -n "$batch" ]]; then
-    echo "batch=${batch}"
+    echo "RENDER_SEED batch=${batch}"
   else
-    echo "batch="
+    echo "RENDER_SEED batch="
   fi
 }
 
@@ -372,6 +394,116 @@ seed_count_products_by_desc_marker() {
   local file="$1"
   local marker="$2"
   seed_find_product_ids_by_desc_marker "$file" "$marker" | wc -l | tr -d ' '
+}
+
+#
+# seed_count_products_across_pages <label_prefix> <marker> [max_page]
+#
+# Counts products matching the marker across all downloaded page JSONs.
+# Files are expected at $SEED_HTTP_DIR/<label_prefix>-p<page>.json
+#
+seed_count_products_across_pages() {
+  local label_prefix="$1"
+  local marker="$2"
+  local max_page="${3:-50}"
+
+  local total=0
+  local page=1
+
+  while [[ $page -le $max_page ]]; do
+    local page_file="$SEED_HTTP_DIR/${label_prefix}-p${page}.json"
+    if [[ ! -f "$page_file" ]]; then
+      break
+    fi
+
+    local count
+    count="$(seed_count_products_by_desc_marker "$page_file" "$marker")"
+    count="${count:-0}"
+    total=$((total + count))
+    page=$((page + 1))
+  done
+
+  # Also check the base file (first page fetched without pagination suffix)
+  if [[ $total -eq 0 ]]; then
+    local base_file="$SEED_HTTP_DIR/${label_prefix}.json"
+    if [[ -f "$base_file" ]]; then
+      local count
+      count="$(seed_count_products_by_desc_marker "$base_file" "$marker")"
+      count="${count:-0}"
+      total=$((total + count))
+    fi
+  fi
+
+  echo "$total"
+}
+
+#
+# seed_backup_filtered_products <http_dir> <marker> <file_pattern> <output_file>
+#
+# Reads all downloaded page JSONs matching <file_pattern> from <http_dir>,
+# extracts products whose description contains <marker>, and writes a valid
+# JSON array of ONLY those products to <output_file>.
+#
+# Uses Python for robust JSON handling (avoids fragile sed-based concatenation).
+#
+seed_backup_filtered_products() {
+  local http_dir="$1"
+  local marker="$2"
+  local pattern="${3:-seed-delete-list}"
+  local output_file="$4"
+
+  python3 - "$http_dir" "$marker" "$pattern" "$output_file" <<'PY'
+import json, sys, os, glob
+
+http_dir = sys.argv[1]
+marker = sys.argv[2]
+pattern = sys.argv[3]
+output_file = sys.argv[4]
+
+products = []
+
+# Find all page files matching the pattern
+page_files = sorted(glob.glob(os.path.join(http_dir, pattern + "-p*.json")))
+
+# Also include the base file if no paginated files exist
+base_file = os.path.join(http_dir, pattern + ".json")
+if not page_files and os.path.exists(base_file):
+    page_files = [base_file]
+
+for filepath in page_files:
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        continue
+
+    # Extract products list from various response shapes
+    page_products = []
+    if isinstance(data, list):
+        page_products = data
+    elif isinstance(data, dict):
+        for key in ("products", "items", "data"):
+            val = data.get(key)
+            if isinstance(val, list):
+                page_products = val
+                break
+        if not page_products and isinstance(data.get("data"), dict):
+            for key in ("products", "items"):
+                val = data["data"].get(key)
+                if isinstance(val, list):
+                    page_products = val
+                    break
+
+    # Filter by marker in description
+    for p in page_products:
+        if isinstance(p, dict) and marker in p.get("description", ""):
+            products.append(p)
+
+with open(output_file, "w", encoding="utf-8") as f:
+    json.dump(products, f, indent=2, ensure_ascii=False)
+
+print(len(products))
+PY
 }
 
 #

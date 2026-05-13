@@ -63,7 +63,8 @@ main() {
   # ── Configuration ───────────────────────────────────────────────────────────
 
   local batch_id="${RENDER_SEED_BATCH_ID:-render-seed-$(date +%s)}"
-  local product_count="${SEED_PRODUCTS_COUNT:-50}"
+  local product_count
+  product_count="$(validate_seed_products_count "${SEED_PRODUCTS_COUNT:-50}")"
   local run_dir="${RUN_DIR:-$(init_seed_run_dir "seed-${batch_id}")}"
   # If init_seed_run_dir ran in a command substitution (subshell),
   # RUN_DIR and SEED_HTTP_DIR are not visible. Set them explicitly.
@@ -314,7 +315,16 @@ PY
   if is_2xx "$list_code"; then
     local marker
     marker="$(seed_product_batch_marker "$batch_id")"
-    total_in_api="$(seed_count_products_by_desc_marker "$SEED_HTTP_DIR/seed-list-verify.json" "$marker")"
+
+    local verify_total_pages
+    verify_total_pages="$(seed_json_get "$SEED_HTTP_DIR/seed-list-verify.json" "total_pages")"
+    verify_total_pages="${verify_total_pages:-1}"
+
+    if [[ "$verify_total_pages" -gt 1 ]]; then
+      seed_fetch_all_products "seed-list-verify" "$verify_total_pages" 100 >/dev/null
+    fi
+
+    total_in_api="$(seed_count_products_across_pages "seed-list-verify" "$marker" "$verify_total_pages")"
   fi
 
   # ── Report ──────────────────────────────────────────────────────────────────
