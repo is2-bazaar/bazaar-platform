@@ -44,6 +44,7 @@ fi
 CASE_NAMES=(
   "00_readiness"
   "01_auth_catalog_setup"
+  "02_seller_name"
   "10_cart_cleanup"
   "20_checkout_approved"
   "21_checkout_insufficient_stock"
@@ -68,6 +69,7 @@ CASE_NAMES=(
 CASE_FUNCS=(
   "case_00_readiness"
   "case_01_auth_catalog_setup"
+  "case_02_seller_name"
   "case_10_cart_cleanup"
   "case_20_checkout_approved"
   "case_21_checkout_insufficient_stock"

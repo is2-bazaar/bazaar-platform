@@ -151,6 +151,55 @@ PY
 }
 
 # ---------------------------------------------------------------------------
+# json_find_seller_name_by_product_id — find seller_name for a product in a list/detail response
+# ---------------------------------------------------------------------------
+json_find_seller_name_by_product_id() {
+  local file="$1"
+  local product_id="$2"
+
+  python3 - "$file" "$product_id" <<'PY'
+import json, sys
+
+file_path = sys.argv[1]
+product_id = str(sys.argv[2])
+
+try:
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+except Exception:
+    print("")
+    sys.exit(0)
+
+products = []
+
+def collect(obj):
+    if isinstance(obj, dict):
+        if isinstance(obj.get("products"), list):
+            products.extend(obj["products"])
+        if isinstance(obj.get("data"), dict):
+            collect(obj["data"])
+        # handle single product detail: top-level dict with "id"
+        if "id" in obj and ("name" in obj or "seller_name" in obj):
+            products.append(obj)
+    elif isinstance(obj, list):
+        products.extend(obj)
+
+collect(data)
+
+for p in products:
+    if not isinstance(p, dict):
+        continue
+    pid = p.get("id") or p.get("ID")
+    if str(pid) == product_id:
+        sn = p.get("seller_name") or p.get("sellerName") or ""
+        print(sn if sn is not None else "")
+        sys.exit(0)
+
+print("")
+PY
+}
+
+# ---------------------------------------------------------------------------
 # json_find_cart_quantity_by_product_id — find quantity of a product in a cart response
 # ---------------------------------------------------------------------------
 json_find_cart_quantity_by_product_id() {
