@@ -157,12 +157,30 @@ case_37_catalog_deleted_product_checkout() {
   # ── Verify no orders created ──
   code="$(buyer_get_orders del-checkout-buyer-orders "$buyer")"
   if is_2xx "$code"; then
+    local orders_file="$HTTP_DIR/buyer-orders-del-checkout-buyer-orders.json"
     local total_orders
-    total_orders="$(json_get "$HTTP_DIR/buyer-orders-del-checkout-buyer-orders.json" ".total_count")"
-    if [[ "$total_orders" == "0" || -z "$total_orders" ]]; then
-      record PASS "deleted product checkout no orders" "total_count=0"
+    total_orders="$(json_get "$orders_file" ".total_count")"
+
+    if [[ -n "$total_orders" ]]; then
+      # total_count present → authoritative
+      if [[ "$total_orders" == "0" ]]; then
+        record PASS "deleted product checkout no orders" "total_count=0"
+      else
+        record FAIL "deleted product checkout no orders" "total_count=$total_orders — buyer has orders despite failed checkout"
+      fi
     else
-      record FAIL "deleted product checkout no orders" "total_count=$total_orders — buyer has orders despite failed checkout"
+      # total_count absent → fallback to orders array length
+      local orders_len
+      orders_len="$(json_array_length "$orders_file" "orders")"
+      if [[ -n "$orders_len" ]]; then
+        if [[ "$orders_len" == "0" ]]; then
+          record PASS "deleted product checkout no orders" "orders_len=0 (total_count absent)"
+        else
+          record FAIL "deleted product checkout no orders" "orders_len=$orders_len — buyer has orders despite failed checkout"
+        fi
+      else
+        record FAIL "deleted product checkout no orders" "could not determine orders count — neither total_count nor orders array found"
+      fi
     fi
   else
     record SKIP "deleted product checkout no orders" "HTTP $code — cannot verify orders"
