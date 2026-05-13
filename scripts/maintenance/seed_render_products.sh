@@ -4,38 +4,42 @@ set -euo pipefail
 ###############################################################################
 # Bazaar — Seed Render Products
 #
-# Inserts up to 50 demo products directly into the Render/Neon catalog database
-# via psql. Designed for frontend E2E demos and manual QA.
+# Creates up to 50 demo products via the API gateway. The seller_name is
+# automatically filled from the JWT by the catalog service.
 #
 # Safety:
 #   - Requires CONFIRMATION="CONFIRMO POBLAR PRODUCTOS RENDER" (unless DRY_RUN)
-#   - Auto-loads DB URLs from scripts/maintenance/.env.cleanup
-#   - Never prints secrets or full DB URLs
-#   - Idempotent by product name (safe to re-run with same batch)
-#   - Logs everything to tmp/render-product-seed-<ts>/
+#   - Auto-loads RENDER_API_BASE_URL from scripts/maintenance/.env.cleanup
+#   - Never prints secrets or full tokens
+#   - Idempotent via Idempotency-Key header per product
+#   - Logs all HTTP requests/responses to tmp/render-product-seed-<ts>/http/
 #
 # Usage:
 #
-#   # Seed 50 products (auto-detect seller):
+#   # Seed 50 products as a specific seller:
 #   CONFIRMATION="CONFIRMO POBLAR PRODUCTOS RENDER" \
+#     SEED_SELLER_EMAIL="seller@example.com" \
+#     SEED_SELLER_PASSWORD="..." \
 #     ./scripts/maintenance/seed_render_products.sh
 #
-#   # Seed with specific seller and custom batch:
+#   # Seed with custom batch ID:
 #   CONFIRMATION="CONFIRMO POBLAR PRODUCTOS RENDER" \
-#     SEED_SELLER_ID=42 \
-#     RENDER_SEED_BATCH_ID=demo-may-2026 \
+#     SEED_SELLER_EMAIL="seller@example.com" \
+#     SEED_SELLER_PASSWORD="..." \
+#     RENDER_SEED_BATCH_ID="demo-may-2026" \
 #     ./scripts/maintenance/seed_render_products.sh
 #
-#   # Dry-run (preview SQL, no insert):
+#   # Dry-run (preview only, no actual API writes):
 #   DRY_RUN=true ./scripts/maintenance/seed_render_products.sh
 #
 # Environment variables:
-#   CATALOG_DB_URL         (auto-loaded from .env.cleanup or export)
-#   SEED_SELLER_ID         Seller to own the products (auto-detected if unset)
+#   RENDER_API_BASE_URL    Gateway base URL (auto-loaded from .env.cleanup)
+#   SEED_SELLER_EMAIL      Seller email for authentication (REQUIRED for non-dry-run)
+#   SEED_SELLER_PASSWORD   Seller password (REQUIRED for non-dry-run)
 #   RENDER_SEED_BATCH_ID   Batch identifier (default: render-seed-<unix-timestamp>)
 #   SEED_PRODUCTS_COUNT    Number of products (default: 50, max: 50)
 #   CONFIRMATION           Must be "CONFIRMO POBLAR PRODUCTOS RENDER"
-#   DRY_RUN                If "true", generate SQL and preview only
+#   DRY_RUN                If "true", preview only — no API writes
 ###############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,23 +57,35 @@ main() {
 
   # ── Validate environment ────────────────────────────────────────────────────
 
-  check_psql
-  require_catalog_url
+  check_curl
+  require_api_base_url
 
   # ── Configuration ───────────────────────────────────────────────────────────
 
   local batch_id="${RENDER_SEED_BATCH_ID:-render-seed-$(date +%s)}"
   local product_count="${SEED_PRODUCTS_COUNT:-50}"
-  local seller_id
-  seller_id="$(resolve_seller_id)"
   local run_dir="${RUN_DIR:-$(init_seed_run_dir "seed-${batch_id}")}"
-  mkdir -p "$run_dir"/{logs,backup,reports}
+  # If init_seed_run_dir ran in a command substitution (subshell),
+  # RUN_DIR and SEED_HTTP_DIR are not visible. Set them explicitly.
+  export RUN_DIR="$run_dir"
+  export SEED_HTTP_DIR="${SEED_HTTP_DIR:-$run_dir/http}"
+  mkdir -p "$run_dir"/{logs,reports} "$SEED_HTTP_DIR"
 
   log_info "Batch ID:   $batch_id"
   log_info "Run dir:    $run_dir"
   log_info "Count:      $product_count"
-  log_info "Seller ID:  [set]"
   log_info "Dry run:    $DRY_RUN"
+
+  # ── Authenticate seller ────────────────────────────────────────────────────
+
+  if [[ "$DRY_RUN" != "true" ]]; then
+    seed_login
+    log_info "Seller ID: [set]"
+  else
+    log_info "Seller credentials: not required for dry-run"
+    # For dry-run, we still validate that vars are present for preview
+    log_info "SEED_SELLER_EMAIL: ${SEED_SELLER_EMAIL:-<not set>}"
+  fi
 
   # ── Product definitions ────────────────────────────────────────────────────
   #
@@ -139,139 +155,193 @@ main() {
     "Caja Organizadora|Caja modular 30L, plástico reforzado, apilable|5499.00|furniture|16"
   )
 
-  # ── Generate SQL ────────────────────────────────────────────────────────────
+  # ── Preview / Dry-run header ────────────────────────────────────────────────
 
-  local sql_file="$run_dir/seed_products.sql"
-  local report_file="$run_dir/reports/seed_report.md"
-  local generated=0
+  local index=1
+  local suffix desc price category stock
+  local full_name padded
 
-  log_step "Generating SQL: $sql_file"
+  local products_to_create=()
+  for line in "${product_data[@]}"; do
+    [[ -z "$line" ]] && continue
+    [[ "$line" == \#* ]] && continue
+    [[ $index -gt $product_count ]] && break
 
-  {
-    echo "-- Bazaar Render Seed Products"
-    echo "-- Batch:   $batch_id"
-    echo "-- Seller:  $seller_id"
-    echo "-- Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-    echo ""
-    echo "BEGIN;"
-    echo ""
+    IFS='|' read -r suffix desc price category stock <<<"$line"
+    printf -v padded '%03d' "$index"
+    full_name="RENDER_SEED_PRODUCT_${batch_id}_${padded} - ${suffix}"
+    products_to_create+=("$full_name")
 
-    local index=1
-    local suffix desc price category stock
-    local full_name escaped_name escaped_desc image_url padded
+    ((index++)) || true
+  done
 
-    for line in "${product_data[@]}"; do
-      # Skip empty or comment lines
-      [[ -z "$line" ]] && continue
-      [[ "$line" == \#* ]] && continue
-      # Respect product count limit
-      [[ $index -gt $product_count ]] && break
-
-      IFS='|' read -r suffix desc price category stock <<<"$line"
-
-      # Build full name: RENDER_SEED_PRODUCT_<batch>_NNN - <suffix>
-      printf -v padded '%03d' "$index"
-      full_name="RENDER_SEED_PRODUCT_${batch_id}_${padded} - ${suffix}"
-
-      # Description includes batch reference for targeted cleanup
-      escaped_desc="$(sql_escape "Render seed product generated by maintenance script | batch=${batch_id} | ${desc}")"
-      escaped_name="$(sql_escape "$full_name")"
-
-      # Image placeholder URL
-      image_url="https://placehold.co/600x400?text=Bazaar+Product+${padded}"
-
-      cat <<SQL
--- Product $padded: $suffix
-INSERT INTO products (seller_id, name, description, price, stock_quantity, image_bucket_url, category, status)
-SELECT ${seller_id}, '${escaped_name}', '${escaped_desc}', ${price}, ${stock}, '${image_url}', '${category}', 'active'
-WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = '${escaped_name}');
-
-SQL
-
-      ((index++)) || true
-      ((generated++)) || true
-    done
-
-    echo ""
-    echo "COMMIT;"
-  } >"$sql_file"
-
-  log_info "Generated SQL for $generated products."
-  log_info "SQL file: $sql_file"
-
-  # ── Dry-run preview ─────────────────────────────────────────────────────────
+  local total_to_create=$((index - 1))
+  log_info "Products to create: $total_to_create"
 
   if [[ "$DRY_RUN" == "true" ]]; then
     echo ""
     blue "==== DRY RUN ===="
     echo ""
-    echo "SQL file generated at: $sql_file"
-    echo "Run directory:        $run_dir"
+    echo "Run directory: $run_dir"
+    echo "API base URL:  $RENDER_API_BASE_URL"
     echo ""
-    echo "Preview (first 5 INSERTs):"
+    echo "Would authenticate as: ${SEED_SELLER_EMAIL:-<not set>}"
+    echo "Would create $total_to_create products via POST /catalog/me/products"
+    echo ""
+    echo "Preview (first 5 products):"
     echo "─────────────────────────────"
-    grep "^INSERT" "$sql_file" | head -5 || true
-    echo "  ... ($generated total)"
+    local i=0
+    for name in "${products_to_create[@]}"; do
+      echo "  $name"
+      i=$((i + 1))
+      [[ $i -ge 5 ]] && break
+    done
+    echo "  ... ($total_to_create total)"
     echo ""
-    blue "No data was inserted (DRY_RUN=true)."
+    blue "No products were created (DRY_RUN=true)."
     echo ""
-    echo "To actually insert:"
+    echo "To actually create:"
     echo "  CONFIRMATION=\"CONFIRMO POBLAR PRODUCTOS RENDER\" \\"
+    echo "    SEED_SELLER_EMAIL=\"seller@example.com\" \\"
+    echo "    SEED_SELLER_PASSWORD=\"...\" \\"
     echo "    RENDER_SEED_BATCH_ID=$batch_id \\"
     echo "    ./scripts/maintenance/seed_render_products.sh"
     exit 0
   fi
 
-  # ── Execute seed ────────────────────────────────────────────────────────────
+  # ── Create products via API ─────────────────────────────────────────────────
 
   seed_banner
 
-  local log_file="$run_dir/logs/seed_psql.log"
-  log_step "Executing seed SQL against Render catalog DB..."
+  local created=0
+  local failed=0
+  local report_file="$run_dir/reports/seed_report.md"
+  local log_file="$run_dir/logs/seed_api.log"
 
-  if psql "$CATALOG_DB_URL" -f "$sql_file" -o "$log_file" 2>&1; then
-    log_info "psql execution completed."
-  else
-    red "[seed][error]  psql execution failed. Check log: $log_file"
-    log_info "The transaction should have been rolled back automatically."
-    exit 1
+  {
+    echo "# Bazaar Render Seed Products — API log"
+    echo ""
+    echo "- **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "- **Batch ID**: \`$batch_id\`"
+    echo "- **Seller email**: \`$SEED_SELLER_EMAIL\`"
+    echo "- **Gateway**: \`$RENDER_API_BASE_URL\`"
+    echo ""
+    echo "## Requests"
+    echo ""
+  } >"$log_file"
+
+  index=1
+  for line in "${product_data[@]}"; do
+    [[ -z "$line" ]] && continue
+    [[ "$line" == \#* ]] && continue
+    [[ $index -gt $product_count ]] && break
+
+    IFS='|' read -r suffix desc price category stock <<<"$line"
+
+    printf -v padded '%03d' "$index"
+    full_name="RENDER_SEED_PRODUCT_${batch_id}_${padded} - ${suffix}"
+
+    local description_text="Render seed product generated by maintenance script | batch=${batch_id} | ${desc}"
+    local image_url="https://placehold.co/600x400?text=Bazaar+Product+${padded}"
+    local idempotency_key="seed-${batch_id}-${padded}"
+
+    # Build JSON payload using python3 for safe escaping
+    local payload
+    payload="$(python3 - "$full_name" "$description_text" "$price" "$stock" "$image_url" "$category" <<'PY'
+import json, sys
+name = sys.argv[1]
+description = sys.argv[2]
+price = float(sys.argv[3])
+stock = int(sys.argv[4])
+image_url = sys.argv[5]
+category = sys.argv[6]
+print(json.dumps({
+    "name": name,
+    "description": description,
+    "price": price,
+    "stock_quantity": stock,
+    "image_bucket_url": image_url,
+    "category": category,
+    "status": "active"
+}))
+PY
+    )"
+
+    local label="seed-create-${padded}"
+    local code
+    code="$(seed_api_req "$label" POST "/catalog/me/products" "$payload" "$idempotency_key")"
+
+    if is_2xx "$code"; then
+      green "  [$padded/$total_to_create] Created: $suffix  (HTTP $code)"
+      {
+        echo "- [$padded] \`$full_name\` → HTTP $code ✓"
+      } >>"$log_file"
+      created=$((created + 1))
+    elif [[ "$code" == "409" ]]; then
+      yellow "  [$padded/$total_to_create] Already exists (idempotent): $suffix  (HTTP $code)"
+      {
+        echo "- [$padded] \`$full_name\` → HTTP $code (already exists, idempotent)"
+      } >>"$log_file"
+      created=$((created + 1))
+    else
+      red "  [$padded/$total_to_create] FAILED: $suffix  (HTTP $code)"
+      local err_body
+      err_body="$(cat "$SEED_HTTP_DIR/${label}.json" 2>/dev/null | tr '\n' ' ' | head -c 300)"
+      {
+        echo "- [$padded] \`$full_name\` → HTTP $code ✗  body: ${err_body}"
+      } >>"$log_file"
+      failed=$((failed + 1))
+    fi
+
+    ((index++)) || true
+  done
+
+  # ── Count created products via API list ─────────────────────────────────────
+
+  log_step "Verifying via API list..."
+  seed_api_req "seed-list-verify" GET "/catalog/me/products?page=1&page_size=100" >/dev/null
+
+  local list_code
+  list_code="$(cat "$SEED_HTTP_DIR/seed-list-verify.code" 2>/dev/null)"
+  local total_in_api=0
+
+  if is_2xx "$list_code"; then
+    local prefix
+    prefix="$(seed_product_name_prefix "$batch_id")"
+    total_in_api="$(seed_count_products_by_prefix "$SEED_HTTP_DIR/seed-list-verify.json" "$prefix")"
   fi
 
-  # ── Count results ───────────────────────────────────────────────────────────
+  # ── Report ──────────────────────────────────────────────────────────────────
 
-  log_step "Counting inserted products..."
-  local total_in_db where_clause
-  where_clause="$(build_seed_product_where "$batch_id")"
-  total_in_db="$(psql "$CATALOG_DB_URL" -t -A -c \
-    "SELECT COUNT(*) FROM products WHERE $where_clause;")"
-  total_in_db="${total_in_db//[[:space:]]/}"
-  total_in_db="${total_in_db:-0}"
-
-  # Write report
   {
     echo "# Render Seed Products — Report"
     echo ""
     echo "- **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "- **Batch ID**: \`$batch_id\`"
-    echo "- **Seller ID**: \`$seller_id\`"
+    echo "- **Seller email**: \`$SEED_SELLER_EMAIL\`"
+    echo "- **Gateway**: \`$RENDER_API_BASE_URL\`"
     echo "- **Run directory**: \`$run_dir\`"
     echo ""
     echo "## Results"
     echo ""
     echo "| Metric | Value |"
     echo "|--------|-------|"
-    echo "| Products generated | $generated |"
-    echo "| Products in DB (this batch) | $total_in_db |"
+    echo "| Products attempted | $total_to_create |"
+    echo "| Products created   | $created |"
+    echo "| Products failed    | $failed |"
+    echo "| Products in API (this batch) | $total_in_api |"
     echo ""
     echo "## Files"
     echo ""
-    echo "- SQL: \`$sql_file\`"
-    echo "- Log: \`$log_file\`"
+    echo "- API log: \`$log_file\`"
+    echo "- HTTP traces: \`$SEED_HTTP_DIR\`"
     echo ""
     echo "## Cleanup command"
     echo ""
     echo '```bash'
     echo "RENDER_SEED_BATCH_ID=$batch_id \\"
+    echo "  SEED_SELLER_EMAIL=\"$SEED_SELLER_EMAIL\" \\"
+    echo "  SEED_SELLER_PASSWORD=\"...\" \\"
     echo "  CONFIRMATION=\"CONFIRMO BORRAR PRODUCTOS SEED RENDER\" \\"
     echo "  ./scripts/maintenance/delete_render_seed_products.sh"
     echo '```'
@@ -283,15 +353,20 @@ SQL
   green "==== SEED COMPLETE ===="
   echo ""
   echo "  Batch ID:     $batch_id"
-  echo "  Seller ID:    $seller_id"
-  echo "  Generated:    $generated products"
-  echo "  In DB now:    $total_in_db"
+  echo "  Seller email: $SEED_SELLER_EMAIL"
+  echo "  Created:      $created of $total_to_create"
+  if [[ "$failed" -gt 0 ]]; then
+    red   "  Failed:       $failed"
+  fi
+  echo "  In API now:   $total_in_api"
   echo "  Run dir:      $run_dir"
   echo "  Report:       $report_file"
   echo ""
   echo "To delete these products later:"
   echo ""
   echo "  RENDER_SEED_BATCH_ID=$batch_id \\"
+  echo "  SEED_SELLER_EMAIL=\"$SEED_SELLER_EMAIL\" \\"
+  echo "  SEED_SELLER_PASSWORD=\"...\" \\"
   echo "  CONFIRMATION=\"CONFIRMO BORRAR PRODUCTOS SEED RENDER\" \\"
   echo "  ./scripts/maintenance/delete_render_seed_products.sh"
   echo ""
