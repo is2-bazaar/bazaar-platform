@@ -81,7 +81,7 @@ case_37_catalog_deleted_product_checkout() {
   fi
 
   # Verify public catalog no longer returns the product
-  code="$(public_get_product del-checkout-verify "$product_id")"
+  code="$(req del-checkout-verify GET "$API_BASE/catalog/products/$product_id")"
   if [[ "$code" == "404" || "$code" == "410" ]]; then
     record PASS "deleted product checkout public 404" "HTTP $code — product gone from public catalog"
   elif is_4xx "$code"; then
@@ -89,6 +89,9 @@ case_37_catalog_deleted_product_checkout() {
   elif is_2xx "$code"; then
     record SKIP "deleted product checkout public hidden" \
       "HTTP $code — product still visible (may be soft-delete)"
+  elif [[ "$code" =~ ^5[0-9][0-9]$ ]]; then
+    record FAIL "deleted product checkout public hidden" \
+      "HTTP $code — server error when checking deleted product"
   else
     record SKIP "deleted product checkout public hidden" "HTTP $code — unexpected"
   fi
