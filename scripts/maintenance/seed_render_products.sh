@@ -285,11 +285,13 @@ PY
       } >>"$log_file"
       created=$((created + 1))
     elif [[ "$code" == "409" ]]; then
-      yellow "  [$padded/$total_to_create] Already exists (idempotent): $human_name  (HTTP $code)"
+      red "  [$padded/$total_to_create] CONFLICT: $human_name  (HTTP $code)"
+      local err_body
+      err_body="$(cat "$SEED_HTTP_DIR/${label}.json" 2>/dev/null | tr '\n' ' ' | head -c 300)"
       {
-        echo "- [$padded] \`$full_name\` → HTTP $code (already exists, idempotent)"
+        echo "- [$padded] \`$full_name\` → HTTP $code CONFLICT ✗  body: ${err_body}"
       } >>"$log_file"
-      created=$((created + 1))
+      failed=$((failed + 1))
     else
       red "  [$padded/$total_to_create] FAILED: $human_name  (HTTP $code)"
       local err_body
@@ -378,6 +380,17 @@ PY
   echo "  Run dir:      $run_dir"
   echo "  Report:       $report_file"
   echo ""
+
+  local had_error=0
+  if [[ "$failed" -gt 0 ]]; then
+    red "  ERROR: $failed products failed to seed. Check the log and HTTP traces."
+    had_error=1
+  fi
+  if [[ "$total_in_api" -lt "$total_to_create" ]]; then
+    red "  ERROR: expected at least $total_to_create products for this batch, found $total_in_api."
+    had_error=1
+  fi
+
   echo "To delete these products later:"
   echo ""
   echo "  RENDER_SEED_BATCH_ID=$batch_id \\"
@@ -386,6 +399,11 @@ PY
   echo "  CONFIRMATION=\"CONFIRMO BORRAR PRODUCTOS SEED RENDER\" \\"
   echo "  ./scripts/maintenance/delete_render_seed_products.sh"
   echo ""
+
+  if [[ "$had_error" -eq 1 ]]; then
+    exit 1
+  fi
+
   green "Done."
 }
 
