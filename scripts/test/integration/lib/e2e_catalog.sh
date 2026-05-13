@@ -51,6 +51,15 @@ list_my_products() {
 }
 
 # ---------------------------------------------------------------------------
+# public_get_product — fetch a product from the public catalog
+# ---------------------------------------------------------------------------
+public_get_product() {
+  local label="$1"
+  local product_id="$2"
+  req "catalog-public-$label" GET "$API_BASE/catalog/products/$product_id"
+}
+
+# ---------------------------------------------------------------------------
 # catalog_setup_suite — create all seed products and resolve their IDs
 # ---------------------------------------------------------------------------
 catalog_setup_suite() {
