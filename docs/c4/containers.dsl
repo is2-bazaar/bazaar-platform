@@ -10,11 +10,11 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
 
         bazaar = softwareSystem "Bazaar" "Marketplace Bazaar" {
 
-            mobile = container "App Mobile" "App React Native. Hoy integra auth real contra el gateway; el resto de flujos esta parcial o mockeado." "React Native + Expo" {
+            mobile = container "App Mobile" "App React Native. Hoy integra auth real y navegación de catálogo; carrito/checkout todavía no están integrados end-to-end y el tab de carrito sigue como placeholder." "React Native + Expo" {
                 tags "Mobile"
             }
 
-            backoffice = container "Backoffice Web" "Backoffice React. Hoy tiene login y refresh reales contra el gateway; las vistas operativas de admin siguen mockeadas." "React + Vite" {
+            backoffice = container "Backoffice Web" "Backoffice React. Hoy tiene login y refresh reales contra el gateway; usuarios/productos tienen integración parcial, mientras órdenes y métricas administrativas siguen mockeadas." "React + Vite" {
                 tags "WebApp"
             }
 
@@ -81,7 +81,7 @@ workspace "Bazaar Containers" "Vista de contenedores acotada al estado actual de
         gateway -> userService "Publica /users/*, /profiles/* y /admin/users/*" "HTTP/JSON síncrono"
         gateway -> catalogService "Publica /catalog/*" "HTTP/JSON síncrono"
         gateway -> cartService "Publica /cart/*" "HTTP/JSON síncrono"
-        gateway -> orderService "Publica /checkout/*, /orders/*, /admin/orders/* y /seller/*" "HTTP/JSON síncrono"
+        gateway -> orderService "Publica /checkout*, /checkout-groups/*, /orders/*, /admin/orders/* y /seller/*" "HTTP/JSON síncrono"
         gateway -> paymentService "Publica /payments/* para consulta autenticada de pagos (user-only)" "HTTP/JSON síncrono"
 
         authService -> authDb "Lee y escribe"
