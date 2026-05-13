@@ -112,14 +112,14 @@ case_02_seller_name() {
     [[ -z "$pid" ]] && continue
     sn="$(json_find_seller_name_by_product_id "$HTTP_DIR/seller-name-home.json" "$pid")"
     if [[ -z "$sn" ]]; then
-      continue  # product not in home — skip
+      continue # product not in home — skip
     fi
     found_one=1
 
     # Determine expected username
     local expected=""
     case "$pid" in
-      "$prod_direct_partial"|"$prod_direct_full") expected="$seller_direct_username" ;;
+      "$prod_direct_partial" | "$prod_direct_full") expected="$seller_direct_username" ;;
       "$prod_checkout") expected="$seller_checkout_username" ;;
       "$prod_seller_a") expected="$seller_a_username" ;;
       "$prod_seller_b") expected="$seller_b_username" ;;
