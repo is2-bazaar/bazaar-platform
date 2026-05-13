@@ -5,7 +5,7 @@ set -euo pipefail
 # Bazaar — Delete Render Seed Products
 #
 # Deletes demo products previously created by seed_render_products.sh.
-# Identifies products by name prefix RENDER_SEED_PRODUCT_ via the API,
+# Identifies products by a marker in the description field via the API,
 # optionally filtered by batch ID.
 #
 # Safety:
@@ -95,11 +95,11 @@ main() {
     fi
   fi
 
-  local prefix
-  prefix="$(seed_product_name_prefix "$batch_id")"
+  local marker
+  marker="$(seed_product_batch_marker "$batch_id")"
 
   log_info "Batch filter: ${batch_id:-<ALL batches>}"
-  log_info "Name prefix:  $prefix"
+  log_info "Desc marker:  $marker"
   log_info "Run dir:      $run_dir"
   log_info "Dry run:      $DRY_RUN"
 
@@ -143,7 +143,7 @@ main() {
 
     # ── Identify seed products ──────────────────────────────────────────────────
 
-    log_step "Identifying seed products by name prefix..."
+    log_step "Identifying seed products by description marker..."
 
     : >"$ids_file"
     : >"$names_file"
@@ -152,14 +152,14 @@ main() {
     while [[ $page -le "${total_pages:-1}" ]]; do
       local page_file="$SEED_HTTP_DIR/seed-delete-list-p${page}.json"
       if [[ ! -f "$page_file" ]]; then
-        page_file="$list_file"  # fallback to first page
+        page_file="$list_file" # fallback to first page
       fi
 
-      seed_find_product_ids_by_prefix "$page_file" "$prefix" >>"$ids_file" 2>/dev/null || true
-      seed_list_products_with_names "$page_file" "$prefix" >>"$names_file" 2>/dev/null || true
+      seed_find_product_ids_by_desc_marker "$page_file" "$marker" >>"$ids_file" 2>/dev/null || true
+      seed_list_products_with_names_by_desc_marker "$page_file" "$marker" >>"$names_file" 2>/dev/null || true
 
       if [[ "$page_file" == "$list_file" ]]; then
-        break  # only one page was fetched
+        break # only one page was fetched
       fi
       page=$((page + 1))
     done
@@ -167,7 +167,7 @@ main() {
     total="$(wc -l <"$ids_file" | tr -d ' ')"
     total="${total:-0}"
 
-    log_info "Products matching prefix: $total"
+    log_info "Products matching marker: $total"
 
     if [[ "$total" -eq 0 ]]; then
       echo ""
@@ -184,7 +184,7 @@ main() {
     echo ""
   else
     log_info "Not authenticated — skipping product listing."
-    log_info "Name prefix that would be used: $prefix"
+    log_info "Description marker that would be used: $marker"
   fi
 
   # ── Dry-run exit ────────────────────────────────────────────────────────────
@@ -197,11 +197,11 @@ main() {
       echo "Would delete:  $total products"
       echo "Full product list: $names_file"
     else
-      echo "Would delete products with name prefix: $prefix"
+      echo "Would delete products with description marker: $marker"
       echo "Set SEED_SELLER_EMAIL/SEED_SELLER_PASSWORD to list real products."
-      log_info "In dry-run without auth, we show the prefix pattern only."
+      log_info "In dry-run without auth, we show the marker pattern only."
     fi
-    echo "Name prefix:   $prefix"
+    echo "Desc marker:   $marker"
     echo "Run directory: $run_dir"
     echo ""
     blue "No data was deleted (DRY_RUN=true)."
@@ -262,7 +262,7 @@ main() {
   delete_final_warning
   echo ""
   echo "  Products to delete: $total"
-  echo "  Name prefix:        $prefix"
+  echo "  Desc marker:        $marker"
   echo "  Backup:             $backup_file"
   echo ""
 
@@ -277,7 +277,7 @@ main() {
     echo ""
     echo "- **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "- **Batch ID**: \`${batch_id:-<ALL>}\`"
-    echo "- **Name prefix**: \`$prefix\`"
+    echo "- **Desc marker**: \`$marker\`"
     echo "- **Seller email**: \`$SEED_SELLER_EMAIL\`"
     echo ""
     echo "## Deletions"
@@ -319,11 +319,14 @@ main() {
 
   log_step "Verifying deletion..."
 
-  code="$(seed_api_req "seed-delete-verify" GET "/catalog/me/products?page=1&page_size=100" >/dev/null; printf '%s' "$?")"
+  code="$(
+    seed_api_req "seed-delete-verify" GET "/catalog/me/products?page=1&page_size=100" >/dev/null
+    printf '%s' "$?"
+  )"
   local remaining=0
 
   if [[ -f "$SEED_HTTP_DIR/seed-delete-verify.json" ]]; then
-    remaining="$(seed_count_products_by_prefix "$SEED_HTTP_DIR/seed-delete-verify.json" "$prefix")"
+    remaining="$(seed_count_products_by_desc_marker "$SEED_HTTP_DIR/seed-delete-verify.json" "$marker")"
   fi
 
   # ── Report ──────────────────────────────────────────────────────────────────
@@ -334,7 +337,7 @@ main() {
     echo ""
     echo "- **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     echo "- **Batch ID**: \`${batch_id:-<ALL>}\`"
-    echo "- **Name prefix**: \`$prefix\`"
+    echo "- **Desc marker**: \`$marker\`"
     echo "- **Seller email**: \`$SEED_SELLER_EMAIL\`"
     echo "- **Run directory**: \`$run_dir\`"
     echo ""
@@ -361,7 +364,7 @@ main() {
   echo ""
   echo "  Deleted:    $deleted of $total products"
   if [[ "$del_failed" -gt 0 ]]; then
-    red   "  Failed:     $del_failed"
+    red "  Failed:     $del_failed"
   fi
   echo "  Remaining:  $remaining"
   echo "  Backup:     $backup_file"

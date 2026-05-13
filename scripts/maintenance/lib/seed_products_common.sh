@@ -228,7 +228,8 @@ seed_login() {
   log_info "Authenticating seller: ${email}"
 
   local payload
-  payload="$(python3 - "$email" "$password" <<'PY'
+  payload="$(
+    python3 - "$email" "$password" <<'PY'
 import json, sys
 print(json.dumps({"email": sys.argv[1], "password": sys.argv[2]}))
 PY
@@ -273,82 +274,30 @@ PY
 # ── Product helpers (API-based) ───────────────────────────────────────────────
 
 #
-# seed_product_name_prefix <batch_id>
+# seed_product_batch_marker <batch_id>
 #
-# Returns the name prefix used to identify seed products in list responses.
+# Returns the marker string embedded in product description to identify
+# seed products. For a specific batch, returns an exact marker.
+# Without batch, returns a shared prefix to catch all seed batches.
 #
-seed_product_name_prefix() {
+seed_product_batch_marker() {
   local batch="${1:-}"
   if [[ -n "$batch" ]]; then
-    echo "RENDER_SEED_PRODUCT_${batch}"
+    echo "batch=${batch}"
   else
-    echo "RENDER_SEED_PRODUCT_"
+    echo "batch="
   fi
 }
 
-#
-# seed_find_product_ids_by_prefix <json_file> <prefix>
-#
-# Scans a catalog list JSON response for products whose name starts with
-# the given prefix. Outputs one product ID per line.
-#
-seed_find_product_ids_by_prefix() {
-  local file="$1"
-  local prefix="$2"
+# ── Internal helper: extract product list from a JSON response ────────────────
 
-  python3 - "$file" "$prefix" <<'PY'
+_seed_extract_products() {
+  local file_path="$1"
+
+  python3 - "$file_path" <<'PY'
 import json, sys
 
 file_path = sys.argv[1]
-prefix = sys.argv[2]
-
-try:
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-except Exception:
-    sys.exit(0)
-
-# Extract product list from response
-products = []
-if isinstance(data, list):
-    products = data
-elif isinstance(data, dict):
-    for key in ("products", "items", "data"):
-        val = data.get(key)
-        if isinstance(val, list):
-            products = val
-            break
-    # Sometimes the data is wrapped: {"data": {"products": [...]}}
-    if not products and isinstance(data.get("data"), dict):
-        for key in ("products", "items"):
-            val = data["data"].get(key)
-            if isinstance(val, list):
-                products = val
-                break
-
-for p in products:
-    if isinstance(p, dict):
-        name = p.get("name", "")
-        pid = p.get("id") or p.get("ID") or ""
-        if name.startswith(prefix) and pid:
-            print(pid)
-PY
-}
-
-#
-# seed_list_products_with_names <json_file> <prefix>
-#
-# Like seed_find_product_ids_by_prefix but outputs "id|name" for reporting.
-#
-seed_list_products_with_names() {
-  local file="$1"
-  local prefix="$2"
-
-  python3 - "$file" "$prefix" <<'PY'
-import json, sys
-
-file_path = sys.argv[1]
-prefix = sys.argv[2]
 
 try:
     with open(file_path, "r", encoding="utf-8") as f:
@@ -365,6 +314,7 @@ elif isinstance(data, dict):
         if isinstance(val, list):
             products = val
             break
+    # Wrapped response: {"data": {"products": [...]}}
     if not products and isinstance(data.get("data"), dict):
         for key in ("products", "items"):
             val = data["data"].get(key)
@@ -374,20 +324,54 @@ elif isinstance(data, dict):
 
 for p in products:
     if isinstance(p, dict):
-        name = p.get("name", "")
         pid = p.get("id") or p.get("ID") or ""
-        if name.startswith(prefix) and pid:
-            print("{}|{}".format(pid, name))
+        name = p.get("name", "")
+        desc = p.get("description", "")
+        # Output tab-delimited: id\tname\tdescription
+        print("{}\t{}\t{}".format(pid, name, desc))
 PY
 }
 
 #
-# seed_count_products_by_prefix <json_file> <prefix>
+# seed_find_product_ids_by_desc_marker <json_file> <marker>
 #
-seed_count_products_by_prefix() {
+# Scans a catalog list JSON response for products whose description
+# contains the given marker. Outputs one product ID per line.
+#
+seed_find_product_ids_by_desc_marker() {
   local file="$1"
-  local prefix="$2"
-  seed_find_product_ids_by_prefix "$file" "$prefix" | wc -l | tr -d ' '
+  local marker="$2"
+
+  _seed_extract_products "$file" | while IFS=$'\t' read -r pid name desc; do
+    if [[ "$desc" == *"${marker}"* && -n "$pid" ]]; then
+      printf '%s\n' "$pid"
+    fi
+  done
+}
+
+#
+# seed_list_products_with_names_by_desc_marker <json_file> <marker>
+#
+# Like seed_find_product_ids_by_desc_marker but outputs "id|name" for reporting.
+#
+seed_list_products_with_names_by_desc_marker() {
+  local file="$1"
+  local marker="$2"
+
+  _seed_extract_products "$file" | while IFS=$'\t' read -r pid name desc; do
+    if [[ "$desc" == *"${marker}"* && -n "$pid" ]]; then
+      printf '%s|%s\n' "$pid" "$name"
+    fi
+  done
+}
+
+#
+# seed_count_products_by_desc_marker <json_file> <marker>
+#
+seed_count_products_by_desc_marker() {
+  local file="$1"
+  local marker="$2"
+  seed_find_product_ids_by_desc_marker "$file" "$marker" | wc -l | tr -d ' '
 }
 
 #
