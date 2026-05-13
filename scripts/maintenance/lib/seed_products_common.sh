@@ -90,18 +90,18 @@ validate_seed_products_count() {
   local count="${1:-50}"
 
   if ! [[ "$count" =~ ^[0-9]+$ ]]; then
-    red "[seed][error]  SEED_PRODUCTS_COUNT must be a positive integer. Got: '${count}'"
-    log_info "Set a valid number, e.g.: export SEED_PRODUCTS_COUNT=50"
+    red "[seed][error]  SEED_PRODUCTS_COUNT must be a positive integer. Got: '${count}'" >&2
+    log_info "Set a valid number, e.g.: export SEED_PRODUCTS_COUNT=50" >&2
     exit 1
   fi
 
   if [[ "$count" -eq 0 ]]; then
-    red "[seed][error]  SEED_PRODUCTS_COUNT must be at least 1. Got: 0"
+    red "[seed][error]  SEED_PRODUCTS_COUNT must be at least 1. Got: 0" >&2
     exit 1
   fi
 
   if [[ "$count" -gt 50 ]]; then
-    yellow "[seed][warn]  SEED_PRODUCTS_COUNT=${count} exceeds maximum (50). Clamping to 50."
+    yellow "[seed][warn]  SEED_PRODUCTS_COUNT=${count} exceeds maximum (50). Clamping to 50." >&2
     count=50
   fi
 
@@ -220,8 +220,10 @@ seed_api_req() {
   printf '%s' "$code"
 }
 
+# Prevent credential leakage in HTTP trace logs by masking any password field.
+# Accepts optional spaces around ':' (e.g. "password" : "secret").
 mask_seed_body() {
-  printf '%s\n' "$1" | sed 's/"password":"[^"]*"/"password":"***"/g'
+  printf '%s\n' "$1" | sed 's/"password"[[:space:]]*:[[:space:]]*"[^"]*"/"password":"***"/g'
 }
 
 # ── Authentication ────────────────────────────────────────────────────────────
@@ -253,7 +255,7 @@ seed_login() {
   payload="$(
     python3 - "$email" "$password" <<'PY'
 import json, sys
-print(json.dumps({"email": sys.argv[1], "password": sys.argv[2]}))
+print(json.dumps({"email": sys.argv[1], "password": sys.argv[2]}, separators=(",", ":")))
 PY
   )"
 
@@ -410,21 +412,21 @@ seed_count_products_across_pages() {
   local total=0
   local page=1
 
-  while [[ $page -le $max_page ]]; do
-    local page_file="$SEED_HTTP_DIR/${label_prefix}-p${page}.json"
-    if [[ ! -f "$page_file" ]]; then
-      break
-    fi
+  # If paginated files exist, count only those; otherwise fall back to the base file.
+  if [[ -f "$SEED_HTTP_DIR/${label_prefix}-p${page}.json" ]]; then
+    while [[ $page -le $max_page ]]; do
+      local page_file="$SEED_HTTP_DIR/${label_prefix}-p${page}.json"
+      if [[ ! -f "$page_file" ]]; then
+        break
+      fi
 
-    local count
-    count="$(seed_count_products_by_desc_marker "$page_file" "$marker")"
-    count="${count:-0}"
-    total=$((total + count))
-    page=$((page + 1))
-  done
-
-  # Also check the base file (first page fetched without pagination suffix)
-  if [[ $total -eq 0 ]]; then
+      local count
+      count="$(seed_count_products_by_desc_marker "$page_file" "$marker")"
+      count="${count:-0}"
+      total=$((total + count))
+      page=$((page + 1))
+    done
+  else
     local base_file="$SEED_HTTP_DIR/${label_prefix}.json"
     if [[ -f "$base_file" ]]; then
       local count
@@ -453,7 +455,7 @@ seed_backup_filtered_products() {
   local output_file="$4"
 
   python3 - "$http_dir" "$marker" "$pattern" "$output_file" <<'PY'
-import json, sys, os, glob
+import json, sys, os, glob, re
 
 http_dir = sys.argv[1]
 marker = sys.argv[2]
@@ -463,7 +465,9 @@ output_file = sys.argv[4]
 products = []
 
 # Find all page files matching the pattern
-page_files = sorted(glob.glob(os.path.join(http_dir, pattern + "-p*.json")))
+# Sort page files numerically so p2 comes before p10
+def _page_sort_key(fpath): return int(re.search(r'-p(\d+)\.json$', fpath).group(1)) if re.search(r'-p(\d+)\.json$', fpath) else 0
+page_files = sorted(glob.glob(os.path.join(http_dir, pattern + "-p*.json")), key=_page_sort_key)
 
 # Also include the base file if no paginated files exist
 base_file = os.path.join(http_dir, pattern + ".json")

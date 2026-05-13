@@ -324,7 +324,7 @@ main() {
     echo "|--------|-------|"
     echo "| Products before delete | $total |"
     echo "| Products after delete  | $remaining |"
-    echo "| Deleted (HTTP success) | $deleted |"
+    echo "| Deleted/already absent | $deleted |"
     echo "| Failed deletions       | $del_failed |"
     echo ""
     echo "## Files"
