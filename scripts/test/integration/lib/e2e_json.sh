@@ -720,7 +720,7 @@ candidates = []
 def collect(obj):
     if isinstance(obj, dict):
         # Single order detail (has "id" and "seller_id" or "buyer_id")
-        if "id" in obj and ("seller_id" in obj or "buyer_id" in obj):
+        if ("id" in obj or "order_id" in obj or "ID" in obj) and ("seller_id" in obj or "buyer_id" in obj):
             candidates.append(obj)
         # List wrapper: "orders" or "data.orders"
         for key in ("orders", "data"):
@@ -743,19 +743,11 @@ for o in candidates:
         continue
     oid = o.get("id") or o.get("ID") or o.get("order_id")
     if str(oid) == target:
-        # Prefer buyer_name, fallback to buyer_username, then buyer_email
-        bn = o.get("buyer_name")
-        if bn is not None:
-            print(bn if bn != "" else "")
-            sys.exit(0)
-        bu = o.get("buyer_username")
-        if bu is not None:
-            print(bu if bu != "" else "")
-            sys.exit(0)
-        be = o.get("buyer_email")
-        if be is not None:
-            print(be if be != "" else "")
-            sys.exit(0)
+        for key in ("buyer_name", "buyer_username", "buyer_email"):
+            val = o.get(key)
+            if val is not None:
+                print(val)
+                sys.exit(0)
         print("")
         sys.exit(0)
 

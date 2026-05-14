@@ -139,7 +139,7 @@ case_38_seller_orders_buyer_name() {
 
   if [[ "$detail_has_bn" == "true" ]]; then
     local detail_bn_value
-    detail_bn_value="$(json_get "$HTTP_DIR/seller-order-bn-detail.json" ".buyer_name")"
+    detail_bn_value="$(json_find_buyer_name_by_order_id "$HTTP_DIR/seller-order-bn-detail.json" "$order_id")"
 
     # Primary: gateway forwards X-User-Name (username).
     # Order-service prefers X-User-Name, falling back to X-User-Email only
@@ -159,7 +159,7 @@ case_38_seller_orders_buyer_name() {
     detail_has_bu="$(json_field_exists "$HTTP_DIR/seller-order-bn-detail.json" "buyer_username")"
     if [[ "$detail_has_bu" == "true" ]]; then
       local detail_bu_value
-      detail_bu_value="$(json_get "$HTTP_DIR/seller-order-bn-detail.json" ".buyer_username")"
+      detail_bu_value="$(json_find_buyer_name_by_order_id "$HTTP_DIR/seller-order-bn-detail.json" "$order_id")"
       if [[ "$detail_bu_value" == "$buyer_username" ]]; then
         record PASS "38 seller detail buyer_username matches" "buyer_username=$detail_bu_value"
       else
