@@ -7,6 +7,10 @@ platform_detect_lan_ip() {
     lan_ip="$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
   fi
 
+  if [[ -z "$lan_ip" ]] && command -v ifconfig >/dev/null 2>&1; then
+    lan_ip="$(ifconfig 2>/dev/null | awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2; exit}')"
+  fi
+
   if [[ -z "$lan_ip" ]] && command -v hostname >/dev/null 2>&1; then
     lan_ip="$(hostname -I 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i !~ /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./) {print $i; exit}}')"
   fi
@@ -22,6 +26,13 @@ platform_lan_ip_is_local() {
   if command -v ip >/dev/null 2>&1; then
     ip -o addr show scope global 2>/dev/null |
       awk '{split($4, address, "/"); print address[1]}' |
+      grep -Fx -q -- "$lan_ip"
+    return $?
+  fi
+
+  if command -v ifconfig >/dev/null 2>&1; then
+    ifconfig 2>/dev/null |
+      awk '/inet / && $2 !~ /^127\./ && $2 !~ /^169\.254\./ {print $2}' |
       grep -Fx -q -- "$lan_ip"
     return $?
   fi
