@@ -691,3 +691,74 @@ count = sum(1 for e in entries if isinstance(e, dict) and e.get("status") == tar
 print(count)
 PY
 }
+
+# ---------------------------------------------------------------------------
+# json_find_buyer_name_by_order_id — find buyer_name (or buyer_username) for
+# an order in a list or single-order detail response.
+# Falls back to buyer_email if present.
+# ---------------------------------------------------------------------------
+json_find_buyer_name_by_order_id() {
+  local file="$1"
+  local order_id="$2"
+
+  python3 - "$file" "$order_id" <<'PY'
+import json, sys
+
+file_path = sys.argv[1]
+target = str(sys.argv[2])
+
+try:
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+except Exception:
+    print("")
+    sys.exit(0)
+
+# Collect candidate order objects
+candidates = []
+
+def collect(obj):
+    if isinstance(obj, dict):
+        # Single order detail (has "id" and "seller_id" or "buyer_id")
+        if "id" in obj and ("seller_id" in obj or "buyer_id" in obj):
+            candidates.append(obj)
+        # List wrapper: "orders" or "data.orders"
+        for key in ("orders", "data"):
+            val = obj.get(key)
+            if isinstance(val, list):
+                for o in val:
+                    if isinstance(o, dict):
+                        candidates.append(o)
+            elif isinstance(val, dict):
+                collect(val)
+    elif isinstance(obj, list):
+        for o in obj:
+            if isinstance(o, dict):
+                candidates.append(o)
+
+collect(data)
+
+for o in candidates:
+    if not isinstance(o, dict):
+        continue
+    oid = o.get("id") or o.get("ID") or o.get("order_id")
+    if str(oid) == target:
+        # Prefer buyer_name, fallback to buyer_username, then buyer_email
+        bn = o.get("buyer_name")
+        if bn is not None:
+            print(bn if bn != "" else "")
+            sys.exit(0)
+        bu = o.get("buyer_username")
+        if bu is not None:
+            print(bu if bu != "" else "")
+            sys.exit(0)
+        be = o.get("buyer_email")
+        if be is not None:
+            print(be if be != "" else "")
+            sys.exit(0)
+        print("")
+        sys.exit(0)
+
+print("")
+PY
+}
