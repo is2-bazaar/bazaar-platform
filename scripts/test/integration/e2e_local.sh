@@ -20,8 +20,11 @@ export INTERNAL_SERVICE_TOKEN="${INTERNAL_SERVICE_TOKEN:-}"
 export CART_INTERNAL_SERVICE_TOKEN="${CART_INTERNAL_SERVICE_TOKEN:-$INTERNAL_SERVICE_TOKEN}"
 export PAYMENT_SIMULATION_MODE="approved"
 
-echo "[sdd7][local] Using local platform URLs"
-echo "[sdd7][local] API_BASE=$API_BASE"
-echo "[sdd7][local] ORDER_BASE=$ORDER_BASE"
+# Admin credentials are resolved by _e2e_checkout.sh from AUTH_BOOTSTRAP_ADMINS
+# (which is set by load_platform_env → .env.local)
 
-"$SCRIPT_DIR/e2e_render_checkout_saga_sdd7.sh"
+echo "[e2e][local] Using local platform URLs"
+echo "[e2e][local] API_BASE=$API_BASE"
+echo "[e2e][local] ORDER_BASE=$ORDER_BASE"
+
+"$SCRIPT_DIR/e2e_tests.sh"
