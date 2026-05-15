@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "test:integration": "node --test test/integration/harness-test.mjs",
-    "test:integration:local": "./scripts/test/integration.sh"
+    "test:integration:local": "./scripts/test/integration/e2e_local.sh"
   },
   "engines": {
     "node": ">=20"
