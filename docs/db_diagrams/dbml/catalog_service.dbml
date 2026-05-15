@@ -9,6 +9,7 @@ Table products {
   deleted_at timestamp
 
   seller_id int [not null]
+  seller_name varchar
   name varchar [not null]
   description text [not null]
   price decimal [not null]
@@ -16,6 +17,12 @@ Table products {
   image_bucket_url text
   category varchar
   status varchar
+}
+
+Table categories {
+  id uint [pk]
+  name varchar [not null]
+  created_at timestamp
 }
 
 Table idempotency_keys {
@@ -50,6 +57,14 @@ Table stock_reservation_items {
   product_id int [not null]
   quantity int [not null]
   created_at timestamp
+}
+
+Table stock_restoration_operations {
+  id uuid [pk]
+  checkout_group_id uuid [not null]
+  status varchar [not null]
+  created_at timestamp
+  updated_at timestamp
 }
 
 Ref: stock_reservation_items.reservation_id > stock_reservations.id

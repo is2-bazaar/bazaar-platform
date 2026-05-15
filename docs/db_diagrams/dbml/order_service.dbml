@@ -30,6 +30,7 @@ Table checkout_groups {
 Table orders {
   id uuid [pk]
   buyer_id uint [not null]
+  buyer_name varchar
   seller_id uint [not null]
 
   coupon_id uuid
