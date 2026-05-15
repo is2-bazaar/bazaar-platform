@@ -32,13 +32,13 @@ EOF
 
 for basename_file in "${dbml_files[@]}"; do
   file="$DBML_DIR/$basename_file"
-  echo "// ====================================" >>"$TMP_FILE"
-  echo "// $basename_file" >>"$TMP_FILE"
-  echo "// ====================================" >>"$TMP_FILE"
-
-  sed '/^Project /,/^}/d' "$file" >>"$TMP_FILE"
-
-  echo "" >>"$TMP_FILE"
+  {
+    echo "// ===================================="
+    echo "// $basename_file"
+    echo "// ===================================="
+    sed '/^Project /,/^}/d' "$file"
+    echo ""
+  } >>"$TMP_FILE"
 done
 
 echo "Publishing to DBDocs..."
