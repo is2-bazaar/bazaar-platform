@@ -29,6 +29,7 @@ services:
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
       ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
+      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notification-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     ports:
       - "${API_GATEWAY_PORT:-8080}:8080"
@@ -202,6 +203,43 @@ services:
       payment-db:
         condition: service_healthy
 
+  notification-service:
+    build:
+      context: ${BAZAAR_NOTIFICATION_SERVICE_PATH}
+      dockerfile: Dockerfile
+    environment:
+      PORT: "${NOTIFICATION_SERVICE_PORT:-8080}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_QUEUE: "${RABBITMQ_QUEUE:-notifications}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/readyz')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-guest}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:-guest}"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   user-service:
     build:
       context: ${BAZAAR_USER_SERVICE_PATH}
@@ -319,3 +357,4 @@ volumes:
   cart-db-data:
   orders-db-data:
   payment-db-data:
+  rabbitmq-data:
