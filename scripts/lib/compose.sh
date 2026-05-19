@@ -102,7 +102,7 @@ platform_export_if_set() {
 
   for variable_name in "$@"; do
     if [[ ${!variable_name+x} == x ]]; then
-      export "$variable_name"
+      export "${variable_name?}"
     fi
   done
 }
