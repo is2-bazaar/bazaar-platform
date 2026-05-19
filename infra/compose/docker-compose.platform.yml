@@ -151,9 +151,11 @@ services:
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
       PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payment-service:8080}"
-      CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-http://localhost:3000/payment/success}"
-      CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-http://localhost:3000/payment/failure}"
-      CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-http://localhost:3000/payment/pending}"
+      # Expo Go local REQUIERE override en .env.local con exp://<LAN_IP>:8081.
+      # Defaults bazaar:// sirven para dev build / produccion (deep linking).
+      CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-bazaar://checkout/result?checkout_status=success}"
+      CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-bazaar://checkout/result?checkout_status=failure}"
+      CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-bazaar://checkout/result?checkout_status=pending}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       orders-db:
@@ -180,7 +182,7 @@ services:
       SERVICE_NAME: "payment-service"
       PORT: "8080"
       DEPENDENCY_TARGETS: "${PAYMENT_SERVICE_DEPENDENCY_TARGETS:-payment-db:5432}"
-      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE:-approved}"
+      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE-approved}"
       PAYMENT_PROVIDER: "${PAYMENT_PROVIDER:-mock}"
       MERCADOPAGO_ACCESS_TOKEN: "${MERCADOPAGO_ACCESS_TOKEN:-}"
       PAYMENT_WEBHOOK_URL: "${PAYMENT_WEBHOOK_URL:-}"
