@@ -91,6 +91,9 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -156,6 +159,9 @@ services:
       CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-http://localhost:3000/payment/failure}"
       CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-http://localhost:3000/payment/pending}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
     depends_on:
       orders-db:
         condition: service_healthy
