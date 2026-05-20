@@ -89,21 +89,25 @@ Detalle de compra:
 ┌────────────────────────────────────────────┐
 │ Compra #9001                               │
 │                                            │
-│ 📦 Vendedor A — Enviada                    │
+│ 📦 Vendedor A — Enviada         Ver orden →│
 │    Tracking: AR123456789                   │
 │    Items: Producto X (x2), Producto Y (x1) │
 │    Subtotal: $10.000                       │
 │                                            │
-│ 📦 Vendedor B — En preparación             │
+│ 📦 Vendedor B — En preparación  Ver orden →│
 │    Items: Producto Z (x1)                  │
 │    Subtotal: $5.000                        │
 │                                            │
-│ 📦 Vendedor C — Confirmada                 │
+│ 📦 Vendedor C — Confirmada      Ver orden →│
 │    Items: Producto W (x3)                  │
 │    Subtotal: $3.000                        │
 │                                            │
 │ Total: $18.000                             │
 └────────────────────────────────────────────┘
+
+Cada orden hija es presionable y navega al detalle individual
+(`GET /orders/:id`) para confirmar entrega, ver tracking completo
+o timeline detallado.
 ```
 
 ### Vendedor (seller)
