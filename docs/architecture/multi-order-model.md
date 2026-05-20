@@ -10,7 +10,7 @@ Cuando un comprador hace checkout con productos de múltiples vendedores, el sis
 
 | Dimensión | Checkout group | Orden hija |
 |---|---|---|
-| Identidad | `checkout_group_id` único por intento de compra | `order_id` único, scoped a un `seller_id` |
+| Identidad | `checkout_group_id` único por intento de compra | `order_id` globalmente único; `seller_id` se usa para autorización y visibilidad |
 | Visibilidad comprador | Ve la compra agrupada con todas las órdenes hijas | Ve el detalle de cada orden dentro del grupo |
 | Visibilidad vendedor | No accede al grupo | Ve solo sus órdenes propias |
 | Visibilidad admin | Puede consultar grupo y órdenes individuales | Puede consultar cualquier orden |
@@ -39,8 +39,10 @@ Cada vendedor gestiona su orden de forma independiente. Esto significa que:
 | `en preparación` | Al menos una orden está `en preparación` y ninguna fue enviada todavía |
 | `parcialmente enviada` | Al menos una orden fue `enviada` pero no todas |
 | `enviada` | Todas las órdenes enviables fueron `enviadas` |
-| `entregada` | Todas las órdenes fueron marcadas como `entregadas` (o el comprador confirmó recepción completa) |
+| `entregada` | Todas las órdenes no canceladas fueron marcadas como `entregadas` (o el comprador confirmó recepción) |
 | `cancelada` | Todas las órdenes del grupo fueron canceladas |
+
+> **Nota:** Esta tabla describe una derivación **opcional** del estado agregado para métricas, soporte o dashboards administrativos. **No se usa en la card principal del comprador**, que muestra solo información neutral: fecha, total, cantidad de órdenes y blue dot. Los reembolsos parciales están fuera del alcance del MVP actual.
 
 ## Indicador de novedades para el comprador
 
@@ -78,9 +80,9 @@ Compra #9001 (checkout_group_id = G1)
 ```text
 Historial de compras:
 ┌────────────────────────────────────────────┐
-│ Compra #9001                    🔵 novedad │
-│ Vendedor A · Vendedor B · Vendedor C       │
-│ Total: $18.000 · Parcialmente enviada      │
+│ Compra del 20/05/2026           🔵 novedad │
+│ 3 órdenes · Total: $18.000                 │
+│                               Ver detalles │
 └────────────────────────────────────────────┘
 
 Detalle de compra:
@@ -121,11 +123,12 @@ El vendedor **no ve** el checkout group, no ve otras órdenes del mismo grupo, y
 
 | Endpoint | Rol | Semántica |
 |---|---|---|
-| `POST /checkout` | Buyer | Crea checkout group + órdenes hijas |
+| `POST /checkout` | Buyer | Crea checkout group + órdenes hijas. Retorna `checkout_group_id` como identidad principal; `order_id` como legado cuando hay una sola orden. |
+| `GET /checkout-groups` | Buyer | Historial de compras del comprador: lista paginada de checkout groups |
 | `GET /checkout-groups/:id` | Buyer, Admin | Detalle agrupado con todas las órdenes hijas |
+| `POST /checkout-groups/:id/mark-seen` | Buyer | Marca el grupo como visto, resetea el indicador de novedades |
 | `GET /checkout/attempts/:idempotencyKey` | Buyer | Reconciliación de intento |
-| `GET /orders?status=` | Buyer | Historial de compras del comprador |
-| `GET /orders/:id` | Buyer | Detalle de una orden individual |
+| `GET /orders/:id` | Buyer, Admin | Detalle de una orden individual (compatibilidad) |
 | `GET /seller/orders?status=` | Seller | Listado de órdenes propias del vendedor |
 | `GET /seller/orders/:id` | Seller | Detalle de una orden propia |
 | `POST /seller/orders/:id/status` | Seller | Avanzar estado logístico de una orden propia |
@@ -135,5 +138,5 @@ El vendedor **no ve** el checkout group, no ve otras órdenes del mismo grupo, y
 
 - `order-service` es dueño del modelo: crea órdenes hijas, persiste el `checkout_group_id` y resuelve vistas por rol.
 - La derivación de estado del grupo es **calculada**, no persistida. Si se persiste en el futuro, debe mantenerse sincronizada de forma idempotente.
-- El timestamp de última visualización (`last_viewed_at` por `buyer_id + checkout_group_id`) puede residir en `order-service` o en una tabla ligera dedicada. No requiere consistencia transaccional fuerte; una escritura eventual es suficiente.
-- El indicador de novedades se resuelve en el backend para que el frontend solo consuma un flag booleano (`has_updates`).
+- El timestamp de última visualización (`buyer_last_seen_at` en `checkout_groups`) se actualiza mediante `POST /checkout-groups/:id/mark-seen`, llamado por el frontend al abrir el detalle. Se inicializa en el momento de confirmación del pago para que compras recién creadas no muestren blue dot.
+- El indicador de novedades se calcula comparando `orders.updated_at > checkout_groups.buyer_last_seen_at` y se expone como `has_unread_updates` (booleano) y `unread_updates_count` (entero).
