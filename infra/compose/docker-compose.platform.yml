@@ -226,6 +226,8 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+      catalog-service:
+        condition: service_started
     ports:
       - "${USER_SERVICE_HOST_PORT:-18082}:8080"
 
