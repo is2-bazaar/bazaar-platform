@@ -66,6 +66,10 @@ services:
       AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS: "${AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS:-5}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       AUTH_BOOTSTRAP_ADMINS: '${AUTH_BOOTSTRAP_ADMINS:-[{"email":"admin@bazaar.dev","username":"admin","password":"Admin1234","full_name":"Admin Bazaar"},{"email":"testadmin@bazaar.dev","username":"testadmin","password":"TestAdmin1234","full_name":"Test Admin Bazaar"}]}'
+      GOOGLE_ALLOWED_CLIENT_IDS: "${GOOGLE_ALLOWED_CLIENT_IDS:-}"
+      GOOGLE_ISSUER: "${GOOGLE_ISSUER:-https://accounts.google.com}"
+      GOOGLE_TOKENINFO_URL: "${GOOGLE_TOKENINFO_URL:-https://oauth2.googleapis.com/tokeninfo}"
+      FEDERATED_LOGIN_ENABLED: "${FEDERATED_LOGIN_ENABLED:-true}"
     depends_on:
       auth-db:
         condition: service_healthy
