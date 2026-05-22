@@ -69,7 +69,7 @@ services:
       GOOGLE_ALLOWED_CLIENT_IDS: "${GOOGLE_ALLOWED_CLIENT_IDS:-}"
       GOOGLE_ISSUER: "${GOOGLE_ISSUER:-https://accounts.google.com}"
       GOOGLE_TOKENINFO_URL: "${GOOGLE_TOKENINFO_URL:-https://oauth2.googleapis.com/tokeninfo}"
-      FEDERATED_LOGIN_ENABLED: "${FEDERATED_LOGIN_ENABLED:-true}"
+      FEDERATED_LOGIN_ENABLED: "${FEDERATED_LOGIN_ENABLED:-false}"
     depends_on:
       auth-db:
         condition: service_healthy
