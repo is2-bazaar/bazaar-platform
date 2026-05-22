@@ -156,6 +156,7 @@ services:
       CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-bazaar://checkout/result?checkout_status=success}"
       CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-bazaar://checkout/result?checkout_status=failure}"
       CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-bazaar://checkout/result?checkout_status=pending}"
+      ALLOW_EXPO_RETURN_URLS: "${ALLOW_EXPO_RETURN_URLS:-false}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       orders-db:
