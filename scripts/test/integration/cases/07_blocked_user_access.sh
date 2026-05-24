@@ -70,10 +70,10 @@ case_07_blocked_user_access() {
   if [[ "$code" == "401" || "$code" == "403" ]]; then
     record PASS "blocked user old token rejected on cart" "HTTP $code"
   elif is_2xx "$code"; then
-    record SKIP "blocked user old token rejected on cart" \
-      "HTTP $code — old token still accepted (token may not be invalidated on block)"
+    record FAIL "blocked user old token rejected on cart" \
+      "HTTP $code — old token still accepted after block"
   else
-    record PASS "blocked user old token cart access" "HTTP $code"
+    record FAIL "blocked user old token rejected on cart" "HTTP $code — unexpected response"
   fi
 
   # ── Verify blocked user's public profile is hidden/not available ──

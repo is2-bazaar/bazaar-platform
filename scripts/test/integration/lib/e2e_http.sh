@@ -60,7 +60,10 @@ req() {
 header_get() {
   local file="$1"
   local name="$2"
-  [[ -f "$file" ]] || { echo ""; return 0; }
+  [[ -f "$file" ]] || {
+    echo ""
+    return 0
+  }
   awk -v hdr="$name" 'BEGIN{IGNORECASE=1} $0~"^"hdr":"{sub(/^[^:]+:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' "$file" 2>/dev/null
 }
 

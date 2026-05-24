@@ -112,8 +112,8 @@ case_49_cancel_stock_restoration_strict() {
     buyer_get_order cancel-stock-poll "$buyer" "$order_id" >/dev/null
     local current_status
     current_status="$(json_order_status "$HTTP_DIR/buyer-order-cancel-stock-poll.json")"
-    [[ "$current_status" == "cancelada" || "$current_status" == "cancelled" || \
-       "$current_status" == "reembolso en proceso" || "$current_status" == "reembolso procesado" ]]
+    [[ "$current_status" == "cancelada" || "$current_status" == "cancelled" ||
+      "$current_status" == "reembolso en proceso" || "$current_status" == "reembolso procesado" ]]
   }
 
   poll_until "cancel-stock-settled" 10 2 _cancel_stock_settled_poll
