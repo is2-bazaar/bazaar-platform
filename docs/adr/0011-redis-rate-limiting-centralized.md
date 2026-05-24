@@ -35,6 +35,15 @@ return current
 - Si `current > max` → HTTP 429 con `Retry-After` (segundos restantes de la ventana).
 - Si Redis no responde (timeout, conexión caída) → fallback al limiter in-memory que ya existe.
 
+### Unidades: ventanas y Redis EXPIRE
+
+Las ventanas de rate limiting se configuran en unidades orientadas al dominio de cada servicio, pero Redis EXPIRE siempre recibe **segundos**:
+
+- **API Gateway**: las ventanas se definen en segundos a nivel de variable de entorno (ej. `GATEWAY_USER_RATE_LIMIT_WINDOW_SECONDS=60`). El gateway pasa ese valor directamente al `EXPIRE` del script Lua, sin conversión.
+- **Auth Service**: las ventanas se definen en minutos a nivel de variable de entorno (ej. `AUTH_LOGIN_RATE_LIMIT_WINDOW_MINUTES=15`) por legibilidad operativa. El auth-service convierte minutos → segundos (`window * 60`) internamente antes de pasarlo al `EXPIRE` del script Lua.
+
+La invariante es que **Redis EXPIRE siempre recibe segundos**. Cada servicio es responsable de convertir sus unidades de configuración a segundos antes de ejecutar el script Lua atómico.
+
 ### Claves en Redis
 
 Las claves usan prefijos por servicio y SHA-256 para no exponer IPs, emails ni user IDs en texto plano:
