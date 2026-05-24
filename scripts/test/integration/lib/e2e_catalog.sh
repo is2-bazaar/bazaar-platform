@@ -60,6 +60,75 @@ public_get_product() {
 }
 
 # ---------------------------------------------------------------------------
+# get_product_stock — query seller's own product listing endpoint and return
+# the stock_quantity for a given product_id.
+# Usage: get_product_stock <label> <token> <product_id>
+# ---------------------------------------------------------------------------
+get_product_stock() {
+  local label="$1"
+  local token="$2"
+  local product_id="$3"
+
+  list_my_products "$label" "$token"
+  local file="$HTTP_DIR/catalog-list-mine-$label.json"
+
+  python3 - "$file" "$product_id" <<'PY'
+import json, sys
+file_path = sys.argv[1]
+product_id = str(sys.argv[2])
+try:
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+except Exception:
+    print("")
+    sys.exit(0)
+
+products = []
+if isinstance(data, list):
+    products = data
+elif isinstance(data, dict):
+    for key in ("products", "items", "data"):
+        val = data.get(key)
+        if isinstance(val, list):
+            products = val
+            break
+    if not products and isinstance(data.get("data"), dict):
+        for k2 in ("products", "items"):
+            if isinstance(data["data"].get(k2), list):
+                products = data["data"][k2]
+                break
+
+for p in products:
+    if not isinstance(p, dict):
+        continue
+    pid = p.get("id") or p.get("ID")
+    if str(pid) == product_id:
+        sq = p.get("stock_quantity") or p.get("stock") or p.get("stockQuantity")
+        if sq is not None:
+            print(sq)
+            sys.exit(0)
+
+print("")
+PY
+}
+
+# ---------------------------------------------------------------------------
+# assert_stock_equals — simple numeric comparison assertion for stock values.
+# Usage: assert_stock_equals <label> <actual> <expected>
+# ---------------------------------------------------------------------------
+assert_stock_equals() {
+  local label="$1"
+  local actual="$2"
+  local expected="$3"
+
+  if [[ "$actual" == "$expected" ]]; then
+    record PASS "stock $label" "stock=$actual"
+  else
+    record FAIL "stock $label" "expected=$expected actual=$actual"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # catalog_setup_suite — create all seed products and resolve their IDs
 # ---------------------------------------------------------------------------
 catalog_setup_suite() {

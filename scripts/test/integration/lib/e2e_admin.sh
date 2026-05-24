@@ -25,6 +25,19 @@ admin_get_order() {
 }
 
 # ---------------------------------------------------------------------------
+# admin_update_user_status — PATCH /admin/users/:userId/status
+# body: {"user_status":"blocked"|"active"}
+# ---------------------------------------------------------------------------
+admin_update_user_status() {
+  local label="$1"
+  local token="$2"
+  local user_id="$3"
+  local status="$4"
+  local payload="{\"user_status\":\"$status\"}"
+  req "admin-user-status-$label" PATCH "$API_BASE/admin/users/$user_id/status" "$payload" "$(auth_h "$token")"
+}
+
+# ---------------------------------------------------------------------------
 # admin_get_users — GET /admin/users/
 # ---------------------------------------------------------------------------
 admin_get_users() {

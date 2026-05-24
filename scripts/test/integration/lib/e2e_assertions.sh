@@ -86,6 +86,34 @@ assert_status_unchanged() {
 }
 
 # ---------------------------------------------------------------------------
+# poll_until — repeatedly run a command until it succeeds or max attempts.
+# Records PASS when condition becomes true, FAIL when not satisfied after max.
+#
+# Usage:
+#   poll_until <label> <max_attempts> <sleep_seconds> <command...>
+# Example:
+#   poll_until "my-condition" 20 2 test "$(some_check)" = "expected"
+# ---------------------------------------------------------------------------
+poll_until() {
+  local label="$1"
+  local max_attempts="${2:-30}"
+  local sleep_secs="${3:-2}"
+  shift 3
+
+  local i
+  for ((i = 1; i <= max_attempts; i++)); do
+    if "$@" 2>/dev/null; then
+      record PASS "poll $label" "succeeded on attempt $i/$max_attempts"
+      return 0
+    fi
+    yellow "POLL $label attempt $i/$max_attempts"
+    sleep "$sleep_secs"
+  done
+  record FAIL "poll $label" "FAILED after $max_attempts attempts"
+  return 1
+}
+
+# ---------------------------------------------------------------------------
 # NEW assertions
 # ---------------------------------------------------------------------------
 

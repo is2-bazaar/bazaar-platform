@@ -76,14 +76,14 @@ case_41_cancel_order_seller() {
     return 0
   fi
 
-  # Verify status is cancelada
+  # Verify status reaches a terminal cancel/refund state
   code="$(buyer_get_order cancel-seller-buyer-check "$buyer_checkout" "$order_id")"
   local status
   status="$(json_order_status "$HTTP_DIR/buyer-order-cancel-seller-buyer-check.json")"
-  if [[ "$status" == "cancelada" ]]; then
-    record PASS "seller cancel order status is cancelada" "status=$status"
+  if [[ "$status" == "cancelada" || "$status" == "reembolso en proceso" || "$status" == "reembolso procesado" ]]; then
+    record PASS "seller cancel order reaches terminal cancel/refund state" "status=$status"
   else
-    record FAIL "seller cancel order status is cancelada" "status=$status"
+    record FAIL "seller cancel order reaches terminal cancel/refund state" "status=$status"
   fi
 
   # Intruder seller cannot cancel

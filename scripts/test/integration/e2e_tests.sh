@@ -45,6 +45,11 @@ CASE_NAMES=(
   "00_readiness"
   "01_auth_catalog_setup"
   "02_seller_name"
+  "05_auth_security_rate_limit"
+  "06_auth_recovery_rate_limit"
+  "07_blocked_user_access"
+  "08_public_profile_privacy"
+  "09_gateway_redis_rate_limit"
   "10_cart_cleanup"
   "20_checkout_approved"
   "21_checkout_insufficient_stock"
@@ -71,13 +76,23 @@ CASE_NAMES=(
   "44_cancel_triggers_refund"
   "45_cancel_sent_order_blocked"
   "47_confirm_delivery_privacy"
+  "49_cancel_stock_restoration_strict"
   "50_admin_readonly"
+  "51_admin_orders_list_filters"
+  "52_admin_orders_detail_readonly"
+  "54_gateway_authz_boundaries"
+  "55_readyz_dependency_semantics"
 )
 
 CASE_FUNCS=(
   "case_00_readiness"
   "case_01_auth_catalog_setup"
   "case_02_seller_name"
+  "case_05_auth_security_rate_limit"
+  "case_06_auth_recovery_rate_limit"
+  "case_07_blocked_user_access"
+  "case_08_public_profile_privacy"
+  "case_09_gateway_redis_rate_limit"
   "case_10_cart_cleanup"
   "case_20_checkout_approved"
   "case_21_checkout_insufficient_stock"
@@ -104,7 +119,12 @@ CASE_FUNCS=(
   "case_44_cancel_triggers_refund"
   "case_45_cancel_sent_order_blocked"
   "case_47_confirm_delivery_privacy"
+  "case_49_cancel_stock_restoration_strict"
   "case_50_admin_readonly"
+  "case_51_admin_orders_list_filters"
+  "case_52_admin_orders_detail_readonly"
+  "case_54_gateway_authz_boundaries"
+  "case_55_readyz_dependency_semantics"
 )
 
 # Parse E2E_CASES filter

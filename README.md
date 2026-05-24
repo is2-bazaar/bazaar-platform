@@ -193,7 +193,9 @@ Atajos opcionales para levantar una sola unidad:
 
 ## Tests E2E
 
-Los scripts de integración E2E validan el checkout saga (SDD7, SDD8, SDD9) contra backend real.
+Los scripts de integración E2E validan el sistema completo contra backend real en modo local.
+
+### Ejecución
 
 ```bash
 # Entorno local (default recomendado)
@@ -205,6 +207,56 @@ ALLOW_RENDER_E2E="I_UNDERSTAND_THIS_WRITES_TO_RENDER" \
 ```
 
 **Importante**: `_e2e_checkout.sh` requiere `E2E_TARGET_ENV` definido explícitamente. Ya no tiene Render como default implícito para evitar contaminar datos de producción por accidente.
+
+### Ejecutar subconjuntos de casos
+
+Usar `E2E_CASES` (prefijos separados por coma):
+
+```bash
+# Solo casos de readiness y checkout
+E2E_TARGET_ENV=local E2E_CASES="00,20,24" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de cancel/refund
+E2E_TARGET_ENV=local E2E_CASES="40,41,44,49" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de rate limiting
+E2E_TARGET_ENV=local E2E_CASES="05,06,09" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de admin y authz
+E2E_TARGET_ENV=local E2E_CASES="50,51,52,54" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de seguridad y perfil
+E2E_TARGET_ENV=local E2E_CASES="07,08" ./scripts/test/integration/e2e_tests.sh
+```
+
+### Grupos de casos
+
+| Prefijo | Grupo | Descripción |
+|---------|-------|-------------|
+| `00` | Readiness | Wake de servicios y verificación de health endpoints |
+| `01-02` | Setup | Registro de actores, creación de productos semilla, seller name |
+| `05` | Rate Limiting (Auth) | Rate limiting directo del auth-service para login por email |
+| `06` | Recovery / non-disclosure | Forgot-password con respuesta genérica + rate limiting |
+| `07` | Bloqueo de usuarios | Admin bloquea/desbloquea usuarios; acceso bloqueado rechazado |
+| `08` | Privacidad de perfil | Perfil público devuelve datos minimizados; 404 para inactivos |
+| `09` | Rate Limiting (Redis) | Verificación end-to-end de rate limiting con Redis |
+| `10` | Cart cleanup | Limpieza de carritos vía endpoint interno |
+| `20-29` | Checkout | Flujo de checkout completo, idempotencia, stock, mock payments |
+| `30-38` | Órdenes | Listado de órdenes (comprador/vendedor), historial, estados |
+| `40-49` | Cancelación | Cancelación de órdenes, refund, restauración de stock |
+| `50-52` | Admin | Endpoints admin (users, orders), filtros, detalle read-only |
+| `54` | Authz Boundaries | Verificación de fronteras de autorización a nivel gateway |
+| `55` | Health Semantics | Verificación de semántica de readyz/livez en todos los servicios |
+
+### Verificación estática (sin stack corriendo)
+
+```bash
+# Shell syntax check en todos los scripts del suite
+find scripts/test/integration -name '*.sh' -exec bash -n {} \;
+
+# ShellCheck (si está instalado)
+find scripts/test/integration -name '*.sh' -exec shellcheck {} \;
+```
 
 ## Limpieza de datos E2E en Render
 
