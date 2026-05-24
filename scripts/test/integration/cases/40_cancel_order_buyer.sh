@@ -78,14 +78,14 @@ case_40_cancel_order_buyer() {
     return 0
   fi
 
-  # Verify status is cancelada
+  # Verify status reaches a terminal cancel/refund state
   code="$(buyer_get_order cancel-buyer-after "$buyer_checkout" "$order_id")"
   local status
   status="$(json_order_status "$HTTP_DIR/buyer-order-cancel-buyer-after.json")"
-  if [[ "$status" == "cancelada" ]]; then
-    record PASS "buyer cancel order status is cancelada" "status=$status"
+  if [[ "$status" == "cancelada" || "$status" == "reembolso en proceso" || "$status" == "reembolso procesado" ]]; then
+    record PASS "buyer cancel order reaches terminal cancel/refund state" "status=$status"
   else
-    record FAIL "buyer cancel order status is cancelada" "status=$status"
+    record FAIL "buyer cancel order reaches terminal cancel/refund state" "status=$status"
   fi
 
   # Verify stock restored

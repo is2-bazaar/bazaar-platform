@@ -31,17 +31,15 @@ if ttl == -1 then
     redis.call('EXPIRE', KEYS[1], ARGV[1])
     ttl = tonumber(ARGV[1])
 end
-if ttl == -2 then
-    redis.call('EXPIRE', KEYS[1], ARGV[1])
-    ttl = tonumber(ARGV[1])
-end
 return {current, ttl}
 ```
+
+`TTL` nunca retorna `-2` después de un `INCR` porque `INCR` crea la clave si no existe; el branch `ttl == -2` era unreachable y fue removido.
 
 - Si `current > max` → HTTP 429 con `Retry-After` (segundos restantes de la ventana).
 - Si Redis no responde (timeout, conexión caída) → fallback al limiter in-memory que ya existe.
 
-### Unidades: ventanas y Redis EXPIRE
+### Unidades: ventanas, timeouts y Redis EXPIRE
 
 Las ventanas de rate limiting se configuran en unidades orientadas al dominio de cada servicio, pero Redis EXPIRE siempre recibe **segundos**:
 
@@ -49,6 +47,19 @@ Las ventanas de rate limiting se configuran en unidades orientadas al dominio de
 - **Auth Service**: las ventanas se definen en minutos a nivel de variable de entorno (ej. `AUTH_LOGIN_RATE_LIMIT_WINDOW_MINUTES=15`) por legibilidad operativa. El auth-service convierte minutos → segundos (`window * 60`) internamente antes de pasarlo al `EXPIRE` del script Lua.
 
 La invariante es que **Redis EXPIRE siempre recibe segundos**. Cada servicio es responsable de convertir sus unidades de configuración a segundos antes de ejecutar el script Lua atómico.
+
+#### Timeouts de Redis (read/write vs dial)
+
+Cada servicio expone dos timeouts de Redis independientes, ambos en **milisegundos**:
+
+| Variable | Default | Descripción |
+|---|---|---|
+| `GATEWAY_REDIS_TIMEOUT_MS` | `100` | Read/write timeout del cliente Redis (operaciones de comando). |
+| `GATEWAY_REDIS_DIAL_TIMEOUT_MS` | `2000` | Timeout de conexión TCP inicial (dial/handshake). |
+| `AUTH_REDIS_TIMEOUT_MS` | `100` | Read/write timeout del cliente Redis (operaciones de comando). |
+| `AUTH_REDIS_DIAL_TIMEOUT_MS` | `2000` | Timeout de conexión TCP inicial (dial/handshake). |
+
+Separar dial timeout del read/write timeout evita que una conexión lenta a Redis (ej. cold start del contenedor, red inestable) consuma el mismo presupuesto que una operación de comando ya establecida. `go-redis/v9` expone ambos timeouts como campos independientes (`DialTimeout` y `ReadTimeout`/`WriteTimeout`).
 
 ### Claves en Redis
 

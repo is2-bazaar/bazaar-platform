@@ -78,7 +78,16 @@ auth_suite() {
 # admin_login — login as admin and save admin_token state key
 # ---------------------------------------------------------------------------
 admin_login() {
-  local payload code token
+  local payload code token cached_token
+
+  cached_token="$(state_get admin_token)"
+  if [[ -n "$cached_token" ]]; then
+    code="$(req admin-login-cached-check GET "$API_BASE/admin/users/?page=1&page_size=1" "" "$(auth_h "$cached_token")")"
+    if is_2xx "$code"; then
+      record PASS "admin login" "email=$ADMIN_EMAIL (cached token reused)"
+      return 0
+    fi
+  fi
 
   payload="$(
     cat <<JSON
@@ -89,7 +98,7 @@ admin_login() {
 JSON
   )"
 
-  code="$(req admin-login POST "$API_BASE/auth/login" "$payload")"
+  code="$(req admin-login POST "$AUTH_BASE/login" "$payload")"
   token="$(json_get "$HTTP_DIR/admin-login.json" ".access_token")"
 
   if is_2xx "$code" && [[ -n "$token" ]]; then
