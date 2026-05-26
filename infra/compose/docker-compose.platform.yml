@@ -28,7 +28,7 @@ services:
     environment:
       PORT: "${API_GATEWAY_PORT:-8080}"
       SERVICE_NAME: "${API_GATEWAY_SERVICE_NAME:-api-gateway}"
-      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders,payments}"
+      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders,payments,recommendations}"
       GATEWAY_ALLOWED_ORIGINS: "${GATEWAY_ALLOWED_ORIGINS:-}"
       GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}"
       GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS:-5}"
@@ -54,6 +54,7 @@ services:
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
       ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
+      RECOMMENDATION_SERVICE_URL: "${RECOMMENDATION_SERVICE_URL:-http://recommendation-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     depends_on:
       redis:
@@ -247,6 +248,24 @@ services:
     depends_on:
       payment-db:
         condition: service_healthy
+
+  recommendation-service:
+    build:
+      context: ${BAZAAR_RECOMMENDATION_SERVICE_PATH}
+      dockerfile: Dockerfile
+    environment:
+      SERVICE_NAME: "recommendation-service"
+      PORT: "8080"
+      ENVIRONMENT: "${ENV_NAME:-local}"
+      MONGO_URL: "${RECOMMENDATION_MONGO_URL:-mongodb://recommendation-db:27017}"
+      MONGO_DB_NAME: "${RECOMMENDATION_DB_NAME:-recommendations}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
+      RABBITMQ_QUEUE: "${RABBITMQ_RECOMMENDATION_QUEUE:-recommendations.events}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+    ports:
+      - "${RECOMMENDATION_SERVICE_HOST_PORT:-18087}:8080"
 
   user-service:
     build:
