@@ -61,7 +61,29 @@ Checkout → order-service → payment-service → MP preference → payment_url
 | `CHECKOUT_SUCCESS_URL` | URL | Redirect after approved payment |
 | `CHECKOUT_FAILURE_URL` | URL | Redirect after rejected payment |
 | `CHECKOUT_PENDING_URL` | URL | Redirect while payment is pending |
+| `ALLOW_EXPO_RETURN_URLS` | `true` \| `false` | Allows request-level `exp://` / `exp+http://` return URLs outside strict production defaults |
 | `INTERNAL_SERVICE_TOKEN` | `bazaar-dev-internal-token` | Must match `payment-service` |
+
+## Mobile return URLs
+
+Mobile sends `return_urls` in `POST /checkout` so the backend does not need to guess whether the buyer is running Expo Go or an installed build.
+
+| Runtime | Return URL source | Example |
+|---------|-------------------|---------|
+| APK / dev build / production | Mobile generated | `bazaar://checkout/result?checkout_status=success` |
+| Expo Go + local backend | Mobile generated or env fallback | `exp://<LAN_IP>:8081/--/checkout/result?checkout_status=success` |
+| Expo Go + remote backend | Mobile generated | `exp://<LAN_IP>:8081/--/checkout/result?checkout_status=success` |
+| Older mobile client | order-service env fallback | `CHECKOUT_SUCCESS_URL`, `CHECKOUT_FAILURE_URL`, `CHECKOUT_PENDING_URL` |
+
+`order-service` accepts request-level URLs only when all three URLs are present and point to `/checkout/result` with the matching `checkout_status` query value.
+
+Allowed schemes:
+
+- `bazaar://` is always allowed.
+- `exp://`, `exp+http://`, and other Expo-generated `exp*` schemes are allowed only when `ALLOW_EXPO_RETURN_URLS=true` or `ENVIRONMENT` is not production.
+- `javascript:`, `file:`, `intent:`, random `http://`, and random `https://` URLs are rejected.
+
+For Render staging/dev where Expo Go points to the remote backend, set `ALLOW_EXPO_RETURN_URLS=true` on `order-service`. For production APK builds, keep the `CHECKOUT_*_URL` fallback values as `bazaar://...` and leave Expo URLs disabled unless you intentionally need Expo Go against that environment.
 
 ## ngrok setup
 

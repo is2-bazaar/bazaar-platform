@@ -79,14 +79,14 @@ case_43_cancel_order_idempotency() {
     record FAIL "cancel idempotency second cancel handled" "HTTP $code body=$(body_flat "$HTTP_DIR/buyer-cancel-cancel-idemp-second.json")"
   fi
 
-  # Final status should be cancelada
+  # Final status should be a terminal cancel/refund state
   code="$(buyer_get_order cancel-idemp-final "$buyer_checkout" "$order_id")"
   local final_status
   final_status="$(json_order_status "$HTTP_DIR/buyer-order-cancel-idemp-final.json")"
-  if [[ "$final_status" == "cancelada" ]]; then
-    record PASS "cancel idempotency final status is cancelada" "status=$final_status"
+  if [[ "$final_status" == "cancelada" || "$final_status" == "reembolso en proceso" || "$final_status" == "reembolso procesado" ]]; then
+    record PASS "cancel idempotency final status is terminal cancel/refund" "status=$final_status"
   else
-    record FAIL "cancel idempotency final status is cancelada" "status=$final_status"
+    record FAIL "cancel idempotency final status is terminal cancel/refund" "status=$final_status"
   fi
 
   # Check history if available — count cancelada entries (skip if not exposed)

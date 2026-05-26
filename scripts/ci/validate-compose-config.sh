@@ -51,6 +51,7 @@ mkdir -p "$TMP_ROOT/bazaar-backoffice/node_modules" "$TMP_ROOT/bazaar-mobile/nod
 
 cd "$REPO_ROOT"
 
+# shellcheck disable=SC2016
 env \
   BAZAAR_API_GATEWAY_PATH="$TMP_ROOT/Bazaar-backend-api-gateway" \
   BAZAAR_AUTH_SERVICE_PATH="$TMP_ROOT/bazaar-backend-auth-service" \
@@ -62,6 +63,19 @@ env \
   BAZAAR_USER_SERVICE_PATH="$TMP_ROOT/bazaar-backend-user-service" \
   BAZAAR_BACKOFFICE_PATH="$TMP_ROOT/bazaar-backoffice" \
   BAZAAR_MOBILE_PATH="$TMP_ROOT/bazaar-mobile" \
-  docker compose -f infra/compose/docker-compose.platform.yml config >/dev/null
+  COMPOSE_OUTPUT="$TMP_ROOT/compose.yml" \
+  bash -lc '
+    set -euo pipefail
+    source scripts/common.sh
+    load_platform_env
+    platform_backend_select_stack
+    ALLOW_EXPO_RETURN_URLS=true
+    platform_compose config >"$COMPOSE_OUTPUT"
+  '
+
+grep -q 'ALLOW_EXPO_RETURN_URLS: "true"' "$TMP_ROOT/compose.yml" || {
+  echo "orders-service does not receive ALLOW_EXPO_RETURN_URLS" >&2
+  exit 1
+}
 
 echo "compose config ok"

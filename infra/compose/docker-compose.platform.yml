@@ -9,6 +9,18 @@ x-postgres-healthcheck: &postgres-healthcheck
   retries: 10
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api-gateway:
     build:
       context: ${BAZAAR_API_GATEWAY_PATH}
@@ -23,7 +35,20 @@ services:
       GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS:-900}"
       GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS:-5}"
       GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS: "${GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS:-60}"
+      GATEWAY_REDIS_ENABLED: "${GATEWAY_REDIS_ENABLED:-true}"
+      GATEWAY_REDIS_HOST: "${GATEWAY_REDIS_HOST:-${REDIS_HOST:-redis}}"
+      GATEWAY_REDIS_PORT: "${GATEWAY_REDIS_PORT:-${REDIS_PORT:-6379}}"
+      GATEWAY_REDIS_DB: "${GATEWAY_REDIS_DB:-0}"
+      GATEWAY_REDIS_PASSWORD: "${GATEWAY_REDIS_PASSWORD:-}"
+      GATEWAY_REDIS_TIMEOUT_MS: "${GATEWAY_REDIS_TIMEOUT_MS:-100}"
+      GATEWAY_REDIS_DIAL_TIMEOUT_MS: "${GATEWAY_REDIS_DIAL_TIMEOUT_MS:-2000}"
+      GATEWAY_REDIS_PREFIX: "${GATEWAY_REDIS_PREFIX:-rl}"
+      GATEWAY_REDIS_TLS: "${GATEWAY_REDIS_TLS:-false}"
+      GATEWAY_REDIS_URL: "${GATEWAY_REDIS_URL:-}"
+      GATEWAY_USER_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_USER_RATE_LIMIT_WINDOW_SECONDS:-60}"
+      GATEWAY_USER_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_USER_RATE_LIMIT_MAX_REQUESTS:-60}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
@@ -31,6 +56,9 @@ services:
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
       RECOMMENDATION_SERVICE_URL: "${RECOMMENDATION_SERVICE_URL:-http://recommendation-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "${API_GATEWAY_PORT:-8080}:8080"
 
@@ -67,11 +95,26 @@ services:
       AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS: "${AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS:-5}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       AUTH_BOOTSTRAP_ADMINS: '${AUTH_BOOTSTRAP_ADMINS:-[{"email":"admin@bazaar.dev","username":"admin","password":"Admin1234","full_name":"Admin Bazaar"},{"email":"testadmin@bazaar.dev","username":"testadmin","password":"TestAdmin1234","full_name":"Test Admin Bazaar"}]}'
+      GOOGLE_ALLOWED_CLIENT_IDS: "${GOOGLE_ALLOWED_CLIENT_IDS:-}"
+      GOOGLE_ISSUER: "${GOOGLE_ISSUER:-https://accounts.google.com}"
+      GOOGLE_TOKENINFO_URL: "${GOOGLE_TOKENINFO_URL:-https://oauth2.googleapis.com/tokeninfo}"
+      FEDERATED_LOGIN_ENABLED: "${FEDERATED_LOGIN_ENABLED:-false}"
+      AUTH_REDIS_HOST: "${AUTH_REDIS_HOST:-${REDIS_HOST:-redis}}"
+      AUTH_REDIS_PORT: "${AUTH_REDIS_PORT:-${REDIS_PORT:-6379}}"
+      AUTH_REDIS_DB: "${AUTH_REDIS_DB:-1}"
+      AUTH_REDIS_PASSWORD: "${AUTH_REDIS_PASSWORD:-}"
+      AUTH_REDIS_TIMEOUT_MS: "${AUTH_REDIS_TIMEOUT_MS:-100}"
+      AUTH_REDIS_DIAL_TIMEOUT_MS: "${AUTH_REDIS_DIAL_TIMEOUT_MS:-2000}"
+      AUTH_REDIS_PREFIX: "${AUTH_REDIS_PREFIX:-rl:auth}"
+      AUTH_REDIS_TLS: "${AUTH_REDIS_TLS:-false}"
+      AUTH_REDIS_URL: "${AUTH_REDIS_URL:-}"
     depends_on:
       auth-db:
         condition: service_healthy
       user-service:
         condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "${AUTH_SERVICE_HOST_PORT:-18081}:8080"
 
@@ -152,9 +195,12 @@ services:
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
       PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payment-service:8080}"
-      CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-http://localhost:3000/payment/success}"
-      CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-http://localhost:3000/payment/failure}"
-      CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-http://localhost:3000/payment/pending}"
+      # Expo Go local REQUIERE override en .env.local con exp://<LAN_IP>:8081.
+      # Defaults bazaar:// sirven para dev build / produccion (deep linking).
+      CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-bazaar://checkout/result?checkout_status=success}"
+      CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-bazaar://checkout/result?checkout_status=failure}"
+      CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-bazaar://checkout/result?checkout_status=pending}"
+      ALLOW_EXPO_RETURN_URLS: "${ALLOW_EXPO_RETURN_URLS:-false}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     depends_on:
       orders-db:
@@ -181,7 +227,7 @@ services:
       SERVICE_NAME: "payment-service"
       PORT: "8080"
       DEPENDENCY_TARGETS: "${PAYMENT_SERVICE_DEPENDENCY_TARGETS:-payment-db:5432}"
-      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE:-approved}"
+      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE-approved}"
       PAYMENT_PROVIDER: "${PAYMENT_PROVIDER:-mock}"
       MERCADOPAGO_ACCESS_TOKEN: "${MERCADOPAGO_ACCESS_TOKEN:-}"
       PAYMENT_WEBHOOK_URL: "${PAYMENT_WEBHOOK_URL:-}"
@@ -332,6 +378,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER:-postgres} -d ${PAYMENT_DB_NAME:-payment_db}"]
 
 volumes:
+  redis-data:
   user-db-data:
   auth-db-data:
   catalog-db-data:

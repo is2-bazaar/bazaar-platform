@@ -20,7 +20,7 @@ Una única orden consolidada para todos los vendedores simplifica la experiencia
 
 Se decide que el checkout multi-vendedor de Bazaar será una **única operación de compra para el comprador**, pero generará internamente **una orden por vendedor**.
 
-Las órdenes creadas por el mismo checkout se agruparán mediante un identificador común, por ejemplo `checkout_group_id`, `purchase_id` o un nombre equivalente definido en la implementación.
+La implementación real usa el identificador común `checkout_group_id` para agrupar todas las órdenes creadas por el mismo checkout.
 
 Esto significa que:
 
@@ -136,14 +136,9 @@ Aunque `Order.seller_id` sea la fuente principal para la orden, conservar `Order
 
 La experiencia deseada es que el comprador perciba un único pago por la compra agrupada.
 
-La implementación puede resolverlo de dos formas:
+La implementación vigente adopta explícitamente **pago único por grupo de checkout**: un único payment intent por el total global, asociado a `checkout_group_id`.
 
-1. **Pago único por grupo de checkout**: un payment intent por el total global, asociado al `checkout_group_id`.
-2. **Pago por orden**: un payment intent por cada orden, manteniendo agrupación visual para el comprador.
-
-La opción preferida es **pago único por grupo de checkout**, porque respeta mejor la UX de una sola compra. Sin embargo, requiere mayor cuidado de consistencia: si el pago se aprueba, todas las órdenes del grupo deben quedar en un estado coherente o debe ejecutarse una compensación.
-
-Si por simplicidad inicial se implementa pago por orden, el frontend debe seguir presentando el resultado como una compra agrupada y no como compras independientes sin relación.
+Esto respeta mejor la UX de una sola compra y obliga a que la consistencia se resuelva a nivel de Saga: si el pago se aprueba, las órdenes del grupo deben quedar alineadas; si falla, el sistema debe compensar stock y estados de forma coherente.
 
 ## Reglas de checkout
 
@@ -441,13 +436,13 @@ GET /admin/orders/:orderId
 
 Devuelve una orden individual en modo solo lectura.
 
-Se recomienda un endpoint adicional para soporte:
+La implementación real no agregó un endpoint administrativo separado. El detalle agrupado se consulta por la ruta compartida buyer/admin:
 
 ```http
-GET /admin/checkout-groups/:checkoutGroupId
+GET /checkout-groups/:checkoutGroupId
 ```
 
-que permita ver la compra agrupada completa.
+con control de acceso por ownership o rol `admin`.
 
 ## Alternativas consideradas
 
