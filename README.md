@@ -79,6 +79,8 @@ Ejemplo:
 ├── bazaar-backend-cart-service/
 ├── bazaar-backend-catalog-service/
 ├── bazaar-backend-order-service/
+├── bazaar-backend-payment-service/
+├── bazaar-backend-recommendation-service/
 ├── bazaar-backend-user-service/
 ├── bazaar-backoffice/
 └── bazaar-mobile/
@@ -117,6 +119,7 @@ Defaults operativos:
 - `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
 - `BAZAAR_ORDER_SERVICE_PATH=../bazaar-backend-order-service`
 - `BAZAAR_PAYMENT_SERVICE_PATH=../bazaar-backend-payment-service`
+- `BAZAAR_RECOMMENDATION_SERVICE_PATH=../bazaar-backend-recommendation-service`
 - `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
@@ -183,6 +186,7 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
 - `bazaar-backend-order-service` vive como repo hermano y es el source of truth de `orders-service`.
 - `bazaar-backend-payment-service` vive como repo hermano y es el source of truth de `payment-service`.
+- `bazaar-backend-recommendation-service` vive como repo hermano y es el source of truth de `recommendation-service`. Expuesto en puerto local `18087`. Por ahora, el servicio funciona como scaffold: `/livez` y `/readyz` responden 200, los endpoints de negocio devuelven 503 Not Implemented.
 - `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
 - `bazaar-platform` levanta el backend local usando solamente los repos de servicios separados.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
