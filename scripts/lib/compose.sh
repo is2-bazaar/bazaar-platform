@@ -18,6 +18,8 @@ platform_backend_select_stack() {
         api-gateway
         auth-service
         user-service
+        rabbitmq
+        recommendation-db
         catalog-service
         cart-service
         orders-service
