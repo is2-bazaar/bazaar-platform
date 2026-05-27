@@ -23,6 +23,7 @@ platform_backend_select_stack() {
         orders-service
         payment-service
         recommendation-service
+        recommendation-worker
       )
       ;;
     auth)

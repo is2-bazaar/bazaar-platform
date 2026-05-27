@@ -21,6 +21,22 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "${RABBITMQ_AMQP_HOST_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_HOST_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-guest}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-guest}"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+
   api-gateway:
     build:
       context: ${BAZAAR_API_GATEWAY_PATH}
@@ -134,8 +150,12 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
     depends_on:
       catalog-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - "${CATALOG_SERVICE_HOST_PORT:-18083}:8080"
@@ -163,6 +183,8 @@ services:
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
     depends_on:
       cart-db:
         condition: service_healthy
@@ -202,6 +224,8 @@ services:
       CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-bazaar://checkout/result?checkout_status=pending}"
       ALLOW_EXPO_RETURN_URLS: "${ALLOW_EXPO_RETURN_URLS:-false}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
     depends_on:
       orders-db:
         condition: service_healthy
@@ -264,8 +288,34 @@ services:
       RABBITMQ_QUEUE: "${RABBITMQ_RECOMMENDATION_QUEUE:-recommendations.events}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+    depends_on:
+      recommendation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "${RECOMMENDATION_SERVICE_HOST_PORT:-18087}:8080"
+
+  recommendation-worker:
+    build:
+      context: ${BAZAAR_RECOMMENDATION_SERVICE_PATH}
+      dockerfile: Dockerfile
+    command: ["python", "-m", "cmd.worker.main"]
+    environment:
+      SERVICE_NAME: "recommendation-worker"
+      ENVIRONMENT: "${ENV_NAME:-local}"
+      MONGO_URL: "${RECOMMENDATION_MONGO_URL:-mongodb://recommendation-db:27017}"
+      MONGO_DB_NAME: "${RECOMMENDATION_DB_NAME:-recommendations}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
+      RABBITMQ_QUEUE: "${RABBITMQ_RECOMMENDATION_QUEUE:-recommendations.events}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+    depends_on:
+      recommendation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   user-service:
     build:
@@ -377,11 +427,25 @@ services:
       <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER:-postgres} -d ${PAYMENT_DB_NAME:-payment_db}"]
 
+  recommendation-db:
+    image: mongo:7
+    ports:
+      - "${RECOMMENDATION_DB_HOST_PORT:-27017}:27017"
+    volumes:
+      - recommendation-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   redis-data:
+  rabbitmq-data:
   user-db-data:
   auth-db-data:
   catalog-db-data:
   cart-db-data:
   orders-db-data:
   payment-db-data:
+  recommendation-db-data:
