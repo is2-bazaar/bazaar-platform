@@ -18,11 +18,14 @@ platform_backend_select_stack() {
         api-gateway
         auth-service
         user-service
+        rabbitmq
+        recommendation-db
         catalog-service
         cart-service
         orders-service
         payment-service
         recommendation-service
+        recommendation-worker
       )
       ;;
     auth)
