@@ -220,6 +220,9 @@ services:
       RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
       RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      FIREBASE_CREDENTIALS_PATH: "/app/firebase-credentials.json"
+    volumes:
+      - ${BAZAAR_NOTIFICATION_SERVICE_PATH}/firebase-credentials.json:/app/firebase-credentials.json
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/readyz')\""]
       interval: 10s
