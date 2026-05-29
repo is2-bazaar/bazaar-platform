@@ -152,6 +152,8 @@ services:
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
       RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
+      RABBITMQ_EXCHANGE_TYPE: "${RABBITMQ_EXCHANGE_TYPE:-topic}"
+      RABBITMQ_RELAY_ENABLED: "${RABBITMQ_RELAY_ENABLED:-true}"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -185,6 +187,8 @@ services:
       DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
       RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
+      RABBITMQ_EXCHANGE_TYPE: "${RABBITMQ_EXCHANGE_TYPE:-topic}"
+      RABBITMQ_RELAY_ENABLED: "${RABBITMQ_RELAY_ENABLED:-true}"
     depends_on:
       cart-db:
         condition: service_healthy
@@ -228,6 +232,8 @@ services:
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
       RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar.events}"
+      RABBITMQ_EXCHANGE_TYPE: "${RABBITMQ_EXCHANGE_TYPE:-topic}"
+      RABBITMQ_RELAY_ENABLED: "${RABBITMQ_RELAY_ENABLED:-true}"
     depends_on:
       orders-db:
         condition: service_healthy
