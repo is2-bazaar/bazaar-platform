@@ -186,13 +186,61 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
 - `bazaar-backend-order-service` vive como repo hermano y es el source of truth de `orders-service`.
 - `bazaar-backend-payment-service` vive como repo hermano y es el source of truth de `payment-service`.
-- `bazaar-backend-recommendation-service` vive como repo hermano y es el source of truth de `recommendation-service`. Expuesto en puerto local `18087`. Por ahora, el servicio funciona como scaffold: `/livez` y `/readyz` responden 200, los endpoints de negocio devuelven 503 Not Implemented.
+- `bazaar-backend-recommendation-service` vive como repo hermano y es el source of truth de `recommendation-service`. Expuesto en puerto local `18087`. Consume eventos de RabbitMQ (`order.checkout.completed.v1`, `cart.item_added.v1`, señales de navegación) y persiste en MongoDB. Expone `/recommendations/popular`, `/recommendations/home`, `/admin/recommendations/backfill/catalog` y endpoints de señales de usuario.
 - `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
 - `bazaar-platform` levanta el backend local usando solamente los repos de servicios separados.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `bazaar-mobile` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
 - `platform` es el dueño del compose local integrado del backend.
 - `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
+
+## Backend full con recommendations
+
+Con `BACKEND_STACK=full` (el default), el stack levanta además del core:
+
+- `rabbitmq` — RabbitMQ 4 con management UI accesible en `http://localhost:15672` (guest/guest)
+- `recommendation-db` — MongoDB 7 accesible en `localhost:27017`
+- `recommendation-service` — API HTTP en `http://localhost:18087`
+- `recommendation-worker` — worker que consume eventos de RabbitMQ y actualiza estadísticas en MongoDB
+
+### Verificación rápida
+
+```bash
+# RabbitMQ management
+open http://localhost:15672  # guest / guest
+
+# Recommendation service directo
+curl http://localhost:18087/readyz
+
+# Populares vía gateway (requiere compra confirmada procesada por outbox)
+curl http://localhost:8080/recommendations/popular \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Home feed (populares + recomendaciones personalizadas si hay señales)
+curl http://localhost:8080/recommendations/home \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Backfill admin de catálogo
+curl -X POST http://localhost:8080/admin/recommendations/backfill/catalog \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+### Flujo event-driven
+
+```
+compra confirmada
+  -> order-service outbox relay
+  -> RabbitMQ exchange bazaar.events (topic)
+  -> recommendation-worker consume order.checkout.completed.v1
+  -> product_sales_daily en MongoDB
+  -> /recommendations/popular devuelve productos con units_sold_30d > 0
+```
+
+### Notas
+
+- Para ver productos populares hace falta al menos una compra confirmada procesada por el outbox relay.
+- Las señales de usuario (`product-viewed`, `category-viewed`, `cart-item-added`) también viajan por RabbitMQ y alimentan las recomendaciones personalizadas.
+- El exchange type es `topic` y el relay outbox está habilitado por default (`RABBITMQ_RELAY_ENABLED=true`).
 
 
 ## Tests E2E
