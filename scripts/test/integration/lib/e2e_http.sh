@@ -51,6 +51,23 @@ req() {
 }
 
 # ---------------------------------------------------------------------------
+# header_get — extract a single response header value from a headers file
+# Usage: header_get <headers_file> <header_name>
+# Example: header_get "$HTTP_DIR/label.headers" "Retry-After"
+# Uses AWK: case-insensitive match, trims leading spaces after colon,
+# strips trailing CR, prints first match and exits.
+# ---------------------------------------------------------------------------
+header_get() {
+  local file="$1"
+  local name="$2"
+  [[ -f "$file" ]] || {
+    echo ""
+    return 0
+  }
+  awk -v hdr="$name" 'BEGIN{IGNORECASE=1} $0~"^"hdr":"{sub(/^[^:]+:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' "$file" 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
 # Status code predicates
 # ---------------------------------------------------------------------------
 is_2xx() { [[ "$1" =~ ^2[0-9][0-9]$ ]]; }

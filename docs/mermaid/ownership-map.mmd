@@ -1,0 +1,33 @@
+mindmap
+  root((Bazaar))
+
+    auth-service
+      User
+      AuthSession
+      PasswordResetCode
+
+    user-service
+      Profile
+
+    catalog-service
+      Product
+      StockReservation
+      StockReservationItem
+      StockRestorationOperation
+      IdempotencyKey
+
+    cart-service
+      Cart
+      CartItem
+      CartCleanupOperation
+
+    order-service
+      CheckoutGroup
+      Order
+      OrderItem
+      OrderStatusHistory
+
+    payment-service
+      Payment
+      Refund
+      WebhookEvent
