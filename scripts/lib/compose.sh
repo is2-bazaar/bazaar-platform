@@ -11,37 +11,37 @@ platform_backend_allowed_origins() {
 
 platform_backend_select_stack() {
   case "${BACKEND_STACK:-full}" in
-    full)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments,notifications,recommendations"
-      # shellcheck disable=SC2034
-      PLATFORM_COMPOSE_SERVICES=(
-        api-gateway
-        auth-service
-        user-service
-        rabbitmq
-        recommendation-db
-        catalog-service
-        cart-service
-        orders-service
-        payment-service
-        notification-service
-        rabbitmq
-        recommendation-service
-        recommendation-worker
-      )
-      ;;
-    auth)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user"
-      # shellcheck disable=SC2034
-      PLATFORM_COMPOSE_SERVICES=(
-        api-gateway
-        auth-service
-        user-service
-      )
-      ;;
-    *)
-      platform_fail "BACKEND_STACK invalido: ${BACKEND_STACK:-}. Valores soportados: full, auth"
-      ;;
+  full)
+    PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments,notifications"
+    # shellcheck disable=SC2034
+    PLATFORM_COMPOSE_SERVICES=(
+      api-gateway
+      auth-service
+      user-service
+      rabbitmq
+      recommendation-db
+      catalog-service
+      cart-service
+      orders-service
+      payment-service
+      notifications-service
+      rabbitmq
+      recommendation-service
+      recommendation-worker
+    )
+    ;;
+  auth)
+    PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user"
+    # shellcheck disable=SC2034
+    PLATFORM_COMPOSE_SERVICES=(
+      api-gateway
+      auth-service
+      user-service
+    )
+    ;;
+  *)
+    platform_fail "BACKEND_STACK invalido: ${BACKEND_STACK:-}. Valores soportados: full, auth"
+    ;;
   esac
 }
 
@@ -136,8 +136,9 @@ platform_compose() {
     BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
     BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
     BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH" \
+    BAZAAR_RECOMMENDATION_SERVICE_PATH="$BAZAAR_RECOMMENDATION_SERVICE_PATH" \
     BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
-    BAZAAR_NOTIFICATION_SERVICE_PATH="$BAZAAR_NOTIFICATION_SERVICE_PATH" \
+    BAZAAR_NOTIFICATIONS_SERVICE_PATH="$BAZAAR_NOTIFICATIONS_SERVICE_PATH" \
     CART_DB_NAME="${CART_DB_NAME:-cart_db}" \
     JWT_SECRET="$resolved_jwt_secret" \
     GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \
@@ -152,6 +153,7 @@ platform_compose() {
   export BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH"
   export BAZAAR_RECOMMENDATION_SERVICE_PATH="$BAZAAR_RECOMMENDATION_SERVICE_PATH"
   export BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH"
+  export BAZAAR_NOTIFICATIONS_SERVICE_PATH="$BAZAAR_NOTIFICATIONS_SERVICE_PATH"
   export CART_DB_NAME="${CART_DB_NAME:-cart_db}"
   export JWT_SECRET="$resolved_jwt_secret"
   export GATEWAY_ALLOWED_ORIGINS="$allowed_origins"

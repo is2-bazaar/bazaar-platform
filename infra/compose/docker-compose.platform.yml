@@ -50,7 +50,7 @@ services:
     environment:
       PORT: "${API_GATEWAY_PORT:-8080}"
       SERVICE_NAME: "${API_GATEWAY_SERVICE_NAME:-api-gateway}"
-      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders,payments,recommendations}"
+      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders,payments,notifications}"
       GATEWAY_ALLOWED_ORIGINS: "${GATEWAY_ALLOWED_ORIGINS:-}"
       GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}"
       GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS:-5}"
@@ -76,7 +76,7 @@ services:
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
       ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
-      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notification-service:8080}"
+      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notifications-service:8080}"
       RECOMMENDATION_SERVICE_URL: "${RECOMMENDATION_SERVICE_URL:-http://recommendation-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
     depends_on:
@@ -159,6 +159,7 @@ services:
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
       <<: *rabbitmq-exchanges
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
       RABBITMQ_NOTIFICATIONS_EXCHANGE: "${RABBITMQ_NOTIFICATIONS_EXCHANGE:-bazaar_notifications}"
       RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
       RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
@@ -346,6 +347,28 @@ services:
     depends_on:
       recommendation-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notifications-service:
+    build:
+      context: ${BAZAAR_NOTIFICATIONS_SERVICE_PATH}
+      dockerfile: Dockerfile
+    env_file:
+      - path: ${BAZAAR_NOTIFICATIONS_SERVICE_PATH}/.env
+        required: false
+      - path: ${BAZAAR_NOTIFICATIONS_SERVICE_PATH}/.env.local
+        required: false
+    environment:
+      PORT: "8080"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_QUEUE: "${RABBITMQ_QUEUE:-notifications}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+    depends_on:
       rabbitmq:
         condition: service_healthy
 
