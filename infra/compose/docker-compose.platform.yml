@@ -8,7 +8,41 @@ x-postgres-healthcheck: &postgres-healthcheck
   timeout: 5s
   retries: 10
 
+x-rabbitmq-exchanges: &rabbitmq-exchanges
+  RABBITMQ_NOTIFICATIONS_EXCHANGE: "${RABBITMQ_NOTIFICATIONS_EXCHANGE:-bazaar_notifications}"
+  RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
+  RABBITMQ_EXCHANGE_TYPE: "${RABBITMQ_EXCHANGE_TYPE:-topic}"
+  RABBITMQ_RELAY_ENABLED: "${RABBITMQ_RELAY_ENABLED:-true}"
+
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "${RABBITMQ_AMQP_HOST_PORT:-5672}:5672"
+      - "${RABBITMQ_MGMT_HOST_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER:-guest}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS:-guest}"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+
   api-gateway:
     build:
       context: ${BAZAAR_API_GATEWAY_PATH}
@@ -16,20 +50,38 @@ services:
     environment:
       PORT: "${API_GATEWAY_PORT:-8080}"
       SERVICE_NAME: "${API_GATEWAY_SERVICE_NAME:-api-gateway}"
-      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders,payments}"
+      GATEWAY_ENABLED_SERVICES: "${GATEWAY_ENABLED_SERVICES:-auth,user,catalog,cart,orders,payments,notifications}"
       GATEWAY_ALLOWED_ORIGINS: "${GATEWAY_ALLOWED_ORIGINS:-}"
       GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_LOGIN_RATE_LIMIT_WINDOW_SECONDS:-60}"
       GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_LOGIN_RATE_LIMIT_MAX_REQUESTS:-5}"
       GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_RECOVERY_RATE_LIMIT_WINDOW_SECONDS:-900}"
       GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_RECOVERY_RATE_LIMIT_MAX_REQUESTS:-5}"
       GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS: "${GATEWAY_RATE_LIMIT_CLEANUP_INTERVAL_SECONDS:-60}"
-      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8081}"
-      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:8080}"
-      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8083}"
-      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:8085}"
-      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:8086}"
+      GATEWAY_REDIS_ENABLED: "${GATEWAY_REDIS_ENABLED:-true}"
+      GATEWAY_REDIS_HOST: "${GATEWAY_REDIS_HOST:-${REDIS_HOST:-redis}}"
+      GATEWAY_REDIS_PORT: "${GATEWAY_REDIS_PORT:-${REDIS_PORT:-6379}}"
+      GATEWAY_REDIS_DB: "${GATEWAY_REDIS_DB:-0}"
+      GATEWAY_REDIS_PASSWORD: "${GATEWAY_REDIS_PASSWORD:-}"
+      GATEWAY_REDIS_TIMEOUT_MS: "${GATEWAY_REDIS_TIMEOUT_MS:-100}"
+      GATEWAY_REDIS_DIAL_TIMEOUT_MS: "${GATEWAY_REDIS_DIAL_TIMEOUT_MS:-2000}"
+      GATEWAY_REDIS_PREFIX: "${GATEWAY_REDIS_PREFIX:-rl}"
+      GATEWAY_REDIS_TLS: "${GATEWAY_REDIS_TLS:-false}"
+      GATEWAY_REDIS_URL: "${GATEWAY_REDIS_URL:-}"
+      GATEWAY_USER_RATE_LIMIT_WINDOW_SECONDS: "${GATEWAY_USER_RATE_LIMIT_WINDOW_SECONDS:-60}"
+      GATEWAY_USER_RATE_LIMIT_MAX_REQUESTS: "${GATEWAY_USER_RATE_LIMIT_MAX_REQUESTS:-60}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
+      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:${ORDER_SERVICE_PORT:-8080}}"
       PAYMENTS_SERVICE_URL: "${PAYMENTS_SERVICE_URL:-http://payment-service:8080}"
+      NOTIFICATIONS_SERVICE_URL: "${NOTIFICATIONS_SERVICE_URL:-http://notifications-service:8080}"
+      RECOMMENDATION_SERVICE_URL: "${RECOMMENDATION_SERVICE_URL:-http://recommendation-service:8080}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "${API_GATEWAY_PORT:-8080}:8080"
 
@@ -66,11 +118,26 @@ services:
       AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS: "${AUTH_RESET_PASSWORD_RATE_LIMIT_MAX_REQUESTS:-5}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       AUTH_BOOTSTRAP_ADMINS: '${AUTH_BOOTSTRAP_ADMINS:-[{"email":"admin@bazaar.dev","username":"admin","password":"Admin1234","full_name":"Admin Bazaar"},{"email":"testadmin@bazaar.dev","username":"testadmin","password":"TestAdmin1234","full_name":"Test Admin Bazaar"}]}'
+      GOOGLE_ALLOWED_CLIENT_IDS: "${GOOGLE_ALLOWED_CLIENT_IDS:-}"
+      GOOGLE_ISSUER: "${GOOGLE_ISSUER:-https://accounts.google.com}"
+      GOOGLE_TOKENINFO_URL: "${GOOGLE_TOKENINFO_URL:-https://oauth2.googleapis.com/tokeninfo}"
+      FEDERATED_LOGIN_ENABLED: "${FEDERATED_LOGIN_ENABLED:-false}"
+      AUTH_REDIS_HOST: "${AUTH_REDIS_HOST:-${REDIS_HOST:-redis}}"
+      AUTH_REDIS_PORT: "${AUTH_REDIS_PORT:-${REDIS_PORT:-6379}}"
+      AUTH_REDIS_DB: "${AUTH_REDIS_DB:-1}"
+      AUTH_REDIS_PASSWORD: "${AUTH_REDIS_PASSWORD:-}"
+      AUTH_REDIS_TIMEOUT_MS: "${AUTH_REDIS_TIMEOUT_MS:-100}"
+      AUTH_REDIS_DIAL_TIMEOUT_MS: "${AUTH_REDIS_DIAL_TIMEOUT_MS:-2000}"
+      AUTH_REDIS_PREFIX: "${AUTH_REDIS_PREFIX:-rl:auth}"
+      AUTH_REDIS_TLS: "${AUTH_REDIS_TLS:-false}"
+      AUTH_REDIS_URL: "${AUTH_REDIS_URL:-}"
     depends_on:
       auth-db:
         condition: service_healthy
       user-service:
         condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "${AUTH_SERVICE_HOST_PORT:-18081}:8080"
 
@@ -90,8 +157,16 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8081}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      <<: *rabbitmq-exchanges
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_NOTIFICATIONS_EXCHANGE: "${RABBITMQ_NOTIFICATIONS_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
+      RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
     depends_on:
       catalog-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - "${CATALOG_SERVICE_HOST_PORT:-18083}:8080"
@@ -119,11 +194,16 @@ services:
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       DEPENDENCY_TARGETS: "${CART_SERVICE_DEPENDENCY_TARGETS:-catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
+      <<: *rabbitmq-exchanges
     depends_on:
       cart-db:
         condition: service_healthy
       catalog-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "${CART_SERVICE_HOST_PORT:-18085}:8080"
 
@@ -151,10 +231,18 @@ services:
       CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8083}"
       CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:8085}"
       PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payment-service:8080}"
-      CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-http://localhost:3000/payment/success}"
-      CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-http://localhost:3000/payment/failure}"
-      CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-http://localhost:3000/payment/pending}"
+      # Expo Go local REQUIERE override en .env.local con exp://<LAN_IP>:8081.
+      # Defaults bazaar:// sirven para dev build / produccion (deep linking).
+      CHECKOUT_SUCCESS_URL: "${CHECKOUT_SUCCESS_URL:-bazaar://checkout/result?checkout_status=success}"
+      CHECKOUT_FAILURE_URL: "${CHECKOUT_FAILURE_URL:-bazaar://checkout/result?checkout_status=failure}"
+      CHECKOUT_PENDING_URL: "${CHECKOUT_PENDING_URL:-bazaar://checkout/result?checkout_status=pending}"
+      ALLOW_EXPO_RETURN_URLS: "${ALLOW_EXPO_RETURN_URLS:-false}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      <<: *rabbitmq-exchanges
+      RABBITMQ_NOTIFICATIONS_EXCHANGE: "${RABBITMQ_NOTIFICATIONS_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
+      RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
     depends_on:
       orders-db:
         condition: service_healthy
@@ -164,6 +252,8 @@ services:
         condition: service_started
       payment-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "${ORDER_SERVICE_HOST_PORT:-18084}:8080"
 
@@ -180,7 +270,7 @@ services:
       SERVICE_NAME: "payment-service"
       PORT: "${PAYMENT_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${PAYMENT_SERVICE_DEPENDENCY_TARGETS:-payment-db:5432}"
-      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE:-approved}"
+      PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE-approved}"
       PAYMENT_PROVIDER: "${PAYMENT_PROVIDER:-mock}"
       MERCADOPAGO_ACCESS_TOKEN: "${MERCADOPAGO_ACCESS_TOKEN:-}"
       PAYMENT_WEBHOOK_URL: "${PAYMENT_WEBHOOK_URL:-}"
@@ -199,6 +289,86 @@ services:
       - "${PAYMENT_SERVICE_HOST_PORT:-18086}:8080"
     depends_on:
       payment-db:
+        condition: service_healthy
+
+  rabbitmq3:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "${RABBITMQ3_PORT:-5673}:5672"
+      - "${RABBITMQ3_MGMT_PORT:-15673}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ3_USER:-guest}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ3_PASSWORD:-guest}"
+    volumes:
+      - rabbitmq3-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  recommendation-service:
+    build:
+      context: ${BAZAAR_RECOMMENDATION_SERVICE_PATH}
+      dockerfile: Dockerfile
+    environment:
+      SERVICE_NAME: "recommendation-service"
+      PORT: "8080"
+      ENVIRONMENT: "${ENV_NAME:-local}"
+      MONGO_URL: "${RECOMMENDATION_MONGO_URL:-mongodb://recommendation-db:27017}"
+      MONGO_DB_NAME: "${RECOMMENDATION_DB_NAME:-recommendations}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
+      RABBITMQ_QUEUE: "${RABBITMQ_RECOMMENDATION_QUEUE:-recommendations.events}"
+      <<: *rabbitmq-exchanges
+    depends_on:
+      recommendation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${RECOMMENDATION_SERVICE_HOST_PORT:-18087}:8080"
+
+  recommendation-worker:
+    build:
+      context: ${BAZAAR_RECOMMENDATION_SERVICE_PATH}
+      dockerfile: Dockerfile
+    command: ["python", "-m", "cmd.worker.main"]
+    environment:
+      SERVICE_NAME: "recommendation-worker"
+      ENVIRONMENT: "${ENV_NAME:-local}"
+      MONGO_URL: "${RECOMMENDATION_MONGO_URL:-mongodb://recommendation-db:27017}"
+      MONGO_DB_NAME: "${RECOMMENDATION_DB_NAME:-recommendations}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_EVENTS_EXCHANGE: "${RABBITMQ_EVENTS_EXCHANGE:-bazaar.events}"
+      RABBITMQ_QUEUE: "${RABBITMQ_RECOMMENDATION_QUEUE:-recommendations.events}"
+      <<: *rabbitmq-exchanges
+    depends_on:
+      recommendation-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notifications-service:
+    build:
+      context: ${BAZAAR_NOTIFICATIONS_SERVICE_PATH}
+      dockerfile: Dockerfile
+    env_file:
+      - path: ${BAZAAR_NOTIFICATIONS_SERVICE_PATH}/.env
+        required: false
+      - path: ${BAZAAR_NOTIFICATIONS_SERVICE_PATH}/.env.local
+        required: false
+    environment:
+      PORT: "8080"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_QUEUE: "${RABBITMQ_QUEUE:-notifications}"
+      RABBITMQ_EXCHANGE: "${RABBITMQ_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
+      JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
+      USER_SERVICE_URL: "${USER_SERVICE_URL:-http://user-service:${USER_SERVICE_PORT:-8080}}"
+      INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+    depends_on:
+      rabbitmq:
         condition: service_healthy
 
   user-service:
@@ -220,9 +390,15 @@ services:
       USER_DB_NAME: "${USER_DB_NAME:-users}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
+      RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
+      RABBITMQ_NOTIFICATIONS_EXCHANGE: "${RABBITMQ_NOTIFICATIONS_EXCHANGE:-bazaar_notifications}"
+      RABBITMQ_ROUTING_KEY: "${RABBITMQ_ROUTING_KEY:-notification.push}"
     depends_on:
       user-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - "${USER_SERVICE_HOST_PORT:-18082}:8080"
@@ -311,10 +487,26 @@ services:
       <<: *postgres-healthcheck
       test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER:-postgres} -d ${PAYMENT_DB_NAME:-payment_db}"]
 
+  recommendation-db:
+    image: mongo:7
+    ports:
+      - "${RECOMMENDATION_DB_HOST_PORT:-27017}:27017"
+    volumes:
+      - recommendation-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
+  redis-data:
+  rabbitmq-data:
   user-db-data:
   auth-db-data:
   catalog-db-data:
   cart-db-data:
   orders-db-data:
   payment-db-data:
+  rabbitmq3-data:
+  recommendation-db-data:

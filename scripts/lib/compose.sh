@@ -12,16 +12,22 @@ platform_backend_allowed_origins() {
 platform_backend_select_stack() {
   case "${BACKEND_STACK:-full}" in
     full)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments"
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments,notifications"
       # shellcheck disable=SC2034
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
         auth-service
         user-service
+        rabbitmq
+        recommendation-db
         catalog-service
         cart-service
         orders-service
         payment-service
+        notifications-service
+        rabbitmq
+        recommendation-service
+        recommendation-worker
       )
       ;;
     auth)
@@ -97,6 +103,16 @@ platform_resolve_internal_service_token() {
   printf '%s\n' "$resolved"
 }
 
+platform_export_if_set() {
+  local variable_name
+
+  for variable_name in "$@"; do
+    if [[ ${!variable_name+x} == x ]]; then
+      export "${variable_name?}"
+    fi
+  done
+}
+
 platform_compose() {
   local allowed_origins
   local resolved_internal_service_token
@@ -120,10 +136,45 @@ platform_compose() {
     BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
     BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
     BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH" \
+    BAZAAR_RECOMMENDATION_SERVICE_PATH="$BAZAAR_RECOMMENDATION_SERVICE_PATH" \
     BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
+    BAZAAR_NOTIFICATIONS_SERVICE_PATH="$BAZAAR_NOTIFICATIONS_SERVICE_PATH" \
     CART_DB_NAME="${CART_DB_NAME:-cart_db}" \
     JWT_SECRET="$resolved_jwt_secret" \
     GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \
     GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES" \
     docker compose -f "$PLATFORM_COMPOSE_FILE" "$@"
+  export INTERNAL_SERVICE_TOKEN="$resolved_internal_service_token"
+  export BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH"
+  export BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH"
+  export BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH"
+  export BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH"
+  export BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH"
+  export BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH"
+  export BAZAAR_RECOMMENDATION_SERVICE_PATH="$BAZAAR_RECOMMENDATION_SERVICE_PATH"
+  export BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH"
+  export BAZAAR_NOTIFICATIONS_SERVICE_PATH="$BAZAAR_NOTIFICATIONS_SERVICE_PATH"
+  export CART_DB_NAME="${CART_DB_NAME:-cart_db}"
+  export JWT_SECRET="$resolved_jwt_secret"
+  export GATEWAY_ALLOWED_ORIGINS="$allowed_origins"
+  export GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES"
+
+  platform_export_if_set \
+    RABBITMQ_URL \
+    PAYMENT_PROVIDER \
+    PAYMENT_SIMULATION_MODE \
+    MERCADOPAGO_ACCESS_TOKEN \
+    PAYMENT_WEBHOOK_URL \
+    MERCADOPAGO_WEBHOOK_SECRET \
+    MERCADOPAGO_WEBHOOK_MAX_SKEW_SECONDS \
+    ORDER_SERVICE_URL \
+    PAYMENT_SERVICE_URL \
+    PAYMENTS_SERVICE_URL \
+    CHECKOUT_SUCCESS_URL \
+    CHECKOUT_FAILURE_URL \
+    CHECKOUT_PENDING_URL \
+    ALLOW_EXPO_RETURN_URLS \
+    PAYMENT_EXPIRATION_MINUTES
+
+  docker compose -f "$PLATFORM_COMPOSE_FILE" "$@"
 }

@@ -33,6 +33,8 @@ require_env MOBILE_RUNTIME_MODE
 require_env BAZAAR_API_GATEWAY_PATH
 require_env BAZAAR_AUTH_SERVICE_PATH
 require_env BAZAAR_USER_SERVICE_PATH
+require_env BAZAAR_RECOMMENDATION_SERVICE_PATH
+require_env BAZAAR_NOTIFICATIONS_SERVICE_PATH
 require_env MOBILE_API_BASE_URL
 require_env MOBILE_DEV_URL
 
@@ -48,7 +50,9 @@ platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 [[ -d "$BAZAAR_CATALOG_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-catalog-service en $BAZAAR_CATALOG_SERVICE_PATH"
 [[ -d "$BAZAAR_ORDER_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-order-service en $BAZAAR_ORDER_SERVICE_PATH"
 [[ -d "$BAZAAR_PAYMENT_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-payment-service en $BAZAAR_PAYMENT_SERVICE_PATH"
+[[ -d "$BAZAAR_RECOMMENDATION_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-recommendation-service en $BAZAAR_RECOMMENDATION_SERVICE_PATH"
 [[ -d "$BAZAAR_USER_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-user-service en $BAZAAR_USER_SERVICE_PATH"
+[[ -d "$BAZAAR_NOTIFICATIONS_SERVICE_PATH" ]] || platform_fail "no se encontro bazaar-backend-notifications-service en $BAZAAR_NOTIFICATIONS_SERVICE_PATH"
 [[ -d "$BAZAAR_BACKOFFICE_PATH" ]] || platform_fail "no se encontro bazaar-backoffice en $BAZAAR_BACKOFFICE_PATH"
 [[ -d "$BAZAAR_MOBILE_PATH" ]] || platform_fail "no se encontro bazaar-mobile en $BAZAAR_MOBILE_PATH"
 
@@ -58,7 +62,9 @@ platform_ok "ENV_NAME local detectado (ENV_NAME=$ENV_NAME)"
 [[ -f "$BAZAAR_CATALOG_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_CATALOG_SERVICE_PATH/Dockerfile"
 [[ -f "$BAZAAR_ORDER_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_ORDER_SERVICE_PATH/Dockerfile"
 [[ -f "$BAZAAR_PAYMENT_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_PAYMENT_SERVICE_PATH/Dockerfile"
+[[ -f "$BAZAAR_RECOMMENDATION_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_RECOMMENDATION_SERVICE_PATH/Dockerfile"
 [[ -f "$BAZAAR_USER_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_USER_SERVICE_PATH/Dockerfile"
+[[ -f "$BAZAAR_NOTIFICATIONS_SERVICE_PATH/Dockerfile" ]] || platform_fail "falta $BAZAAR_NOTIFICATIONS_SERVICE_PATH/Dockerfile"
 [[ -f "$PLATFORM_COMPOSE_FILE" ]] || platform_fail "falta el compose local de platform: $PLATFORM_COMPOSE_FILE"
 
 for script_name in up.sh down.sh status.sh; do

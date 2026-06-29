@@ -1,0 +1,57 @@
+flowchart LR
+
+%% =====================================================
+%% SHARED DOMAIN COLORS
+%% =====================================================
+
+classDef auth fill:#E3F2FD,stroke:#1E88E5,color:#0D47A1,stroke-width:2px;
+classDef user fill:#E8F5E9,stroke:#43A047,color:#1B5E20,stroke-width:2px;
+classDef catalog fill:#FFF3E0,stroke:#FB8C00,color:#E65100,stroke-width:2px;
+classDef cart fill:#F3E5F5,stroke:#8E24AA,color:#4A148C,stroke-width:2px;
+classDef order fill:#FCE4EC,stroke:#D81B60,color:#880E4F,stroke-width:2px;
+classDef payment fill:#ECEFF1,stroke:#546E7A,color:#263238,stroke-width:2px;
+classDef gateway fill:#E0F7FA,stroke:#00ACC1,color:#006064,stroke-width:2px;
+
+linkStyle default stroke:#90A4AE,stroke-width:1.5px;
+
+
+Client["External Client"]
+Gateway["API Gateway"]
+
+Auth["auth-service"]
+User["user-service"]
+Catalog["catalog-service"]
+Cart["cart-service"]
+Order["order-service"]
+Payment["payment-service"]
+
+MercadoPago["MercadoPago"]
+
+Client --> Gateway
+
+Gateway --> Auth
+Gateway --> User
+Gateway --> Catalog
+Gateway --> Cart
+Gateway --> Order
+Gateway --> Payment
+
+Auth --> User
+User --> Auth
+
+Cart --> Catalog
+
+Order --> Catalog
+Order --> Cart
+Order --> Payment
+
+Payment --> Order
+Payment --> MercadoPago
+
+class Gateway gateway
+class Auth auth
+class User user
+class Catalog catalog
+class Cart cart
+class Order order
+class Payment payment

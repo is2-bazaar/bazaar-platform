@@ -79,6 +79,8 @@ Ejemplo:
 ├── bazaar-backend-cart-service/
 ├── bazaar-backend-catalog-service/
 ├── bazaar-backend-order-service/
+├── bazaar-backend-payment-service/
+├── bazaar-backend-recommendation-service/
 ├── bazaar-backend-user-service/
 ├── bazaar-backoffice/
 └── bazaar-mobile/
@@ -117,6 +119,7 @@ Defaults operativos:
 - `BAZAAR_CATALOG_SERVICE_PATH=../bazaar-backend-catalog-service`
 - `BAZAAR_ORDER_SERVICE_PATH=../bazaar-backend-order-service`
 - `BAZAAR_PAYMENT_SERVICE_PATH=../bazaar-backend-payment-service`
+- `BAZAAR_RECOMMENDATION_SERVICE_PATH=../bazaar-backend-recommendation-service`
 - `BAZAAR_USER_SERVICE_PATH=../bazaar-backend-user-service`
 - `BAZAAR_BACKOFFICE_PATH=../bazaar-backoffice`
 - `BAZAAR_MOBILE_PATH=../bazaar-mobile`
@@ -183,6 +186,7 @@ Atajos opcionales para levantar una sola unidad:
 - `bazaar-backend-catalog-service` vive como repo hermano y es el source of truth de `catalog-service`.
 - `bazaar-backend-order-service` vive como repo hermano y es el source of truth de `orders-service`.
 - `bazaar-backend-payment-service` vive como repo hermano y es el source of truth de `payment-service`.
+- `bazaar-backend-recommendation-service` vive como repo hermano y es el source of truth de `recommendation-service`. Expuesto en puerto local `18087`. Consume eventos de RabbitMQ (`order.checkout.completed.v1`, `cart.item_added.v1`, señales de navegación) y persiste en MongoDB. Expone `/recommendations/popular`, `/recommendations/home`, `/admin/recommendations/backfill/catalog` y endpoints de señales de usuario.
 - `bazaar-backend-user-service` vive como repo hermano y es el source of truth de `user-service`.
 - `bazaar-platform` levanta el backend local usando solamente los repos de servicios separados.
 - `bazaar-backoffice` vive como repo hermano y expone `scripts/dev/{up,down,status}.sh`.
@@ -190,10 +194,60 @@ Atajos opcionales para levantar una sola unidad:
 - `platform` es el dueño del compose local integrado del backend.
 - `platform` es la única fuente de verdad para la allowlist CORS local del gateway.
 
+## Backend full con recommendations
+
+Con `BACKEND_STACK=full` (el default), el stack levanta además del core:
+
+- `rabbitmq` — RabbitMQ 4 con management UI accesible en `http://localhost:15672` (guest/guest)
+- `recommendation-db` — MongoDB 7 accesible en `localhost:27017`
+- `recommendation-service` — API HTTP en `http://localhost:18087`
+- `recommendation-worker` — worker que consume eventos de RabbitMQ y actualiza estadísticas en MongoDB
+
+### Verificación rápida
+
+```bash
+# RabbitMQ management
+open http://localhost:15672  # guest / guest
+
+# Recommendation service directo
+curl http://localhost:18087/readyz
+
+# Populares vía gateway (requiere compra confirmada procesada por outbox)
+curl http://localhost:8080/recommendations/popular \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Home feed (populares + recomendaciones personalizadas si hay señales)
+curl http://localhost:8080/recommendations/home \
+  -H "Authorization: Bearer <TOKEN>"
+
+# Backfill admin de catálogo
+curl -X POST http://localhost:8080/admin/recommendations/backfill/catalog \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+```
+
+### Flujo event-driven
+
+```
+compra confirmada
+  -> order-service outbox relay
+  -> RabbitMQ exchange bazaar.events (topic)
+  -> recommendation-worker consume order.checkout.completed.v1
+  -> product_sales_daily en MongoDB
+  -> /recommendations/popular devuelve productos con units_sold_30d > 0
+```
+
+### Notas
+
+- Para ver productos populares hace falta al menos una compra confirmada procesada por el outbox relay.
+- Las señales de usuario (`product-viewed`, `category-viewed`, `cart-item-added`) también viajan por RabbitMQ y alimentan las recomendaciones personalizadas.
+- El exchange type es `topic` y el relay outbox está habilitado por default (`RABBITMQ_RELAY_ENABLED=true`).
+
 
 ## Tests E2E
 
-Los scripts de integración E2E validan el checkout saga (SDD7, SDD8, SDD9) contra backend real.
+Los scripts de integración E2E validan el sistema completo contra backend real en modo local.
+
+### Ejecución
 
 ```bash
 # Entorno local (default recomendado)
@@ -205,6 +259,56 @@ ALLOW_RENDER_E2E="I_UNDERSTAND_THIS_WRITES_TO_RENDER" \
 ```
 
 **Importante**: `_e2e_checkout.sh` requiere `E2E_TARGET_ENV` definido explícitamente. Ya no tiene Render como default implícito para evitar contaminar datos de producción por accidente.
+
+### Ejecutar subconjuntos de casos
+
+Usar `E2E_CASES` (prefijos separados por coma):
+
+```bash
+# Solo casos de readiness y checkout
+E2E_TARGET_ENV=local E2E_CASES="00,20,24" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de cancel/refund
+E2E_TARGET_ENV=local E2E_CASES="40,41,44,49" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de rate limiting
+E2E_TARGET_ENV=local E2E_CASES="05,06,09" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de admin y authz
+E2E_TARGET_ENV=local E2E_CASES="50,51,52,54" ./scripts/test/integration/e2e_tests.sh
+
+# Solo casos de seguridad y perfil
+E2E_TARGET_ENV=local E2E_CASES="07,08" ./scripts/test/integration/e2e_tests.sh
+```
+
+### Grupos de casos
+
+| Prefijo | Grupo | Descripción |
+|---------|-------|-------------|
+| `00` | Readiness | Wake de servicios y verificación de health endpoints |
+| `01-02` | Setup | Registro de actores, creación de productos semilla, seller name |
+| `05` | Rate Limiting (Auth) | Rate limiting directo del auth-service para login por email |
+| `06` | Recovery / non-disclosure | Forgot-password con respuesta genérica + rate limiting |
+| `07` | Bloqueo de usuarios | Admin bloquea/desbloquea usuarios; acceso bloqueado rechazado |
+| `08` | Privacidad de perfil | Perfil público devuelve datos minimizados; 404 para inactivos |
+| `09` | Rate Limiting (Redis) | Verificación end-to-end de rate limiting con Redis |
+| `10` | Cart cleanup | Limpieza de carritos vía endpoint interno |
+| `20-29` | Checkout | Flujo de checkout completo, idempotencia, stock, mock payments |
+| `30-38` | Órdenes | Listado de órdenes (comprador/vendedor), historial, estados |
+| `40-49` | Cancelación | Cancelación de órdenes, refund, restauración de stock |
+| `50-52` | Admin | Endpoints admin (users, orders), filtros, detalle read-only |
+| `54` | Authz Boundaries | Verificación de fronteras de autorización a nivel gateway |
+| `55` | Health Semantics | Verificación de semántica de readyz/livez en todos los servicios |
+
+### Verificación estática (sin stack corriendo)
+
+```bash
+# Shell syntax check en todos los scripts del suite
+find scripts/test/integration -name '*.sh' -exec bash -n {} \;
+
+# ShellCheck (si está instalado)
+find scripts/test/integration -name '*.sh' -exec shellcheck {} \;
+```
 
 ## Limpieza de datos E2E en Render
 
