@@ -1,0 +1,49 @@
+Project payment_service {
+  database_type: "PostgreSQL"
+}
+
+Table payments {
+  id uuid [pk]
+  buyer_id uint [not null, default: 0]
+  checkout_group_id uuid [unique]
+  payment_id varchar [not null, unique]
+  provider_payment_id varchar
+  status varchar [not null, default: 'pending']
+  amount_cents bigint [not null, default: 0]
+  currency varchar [not null, default: 'ARS']
+  provider varchar [not null, default: 'mercadopago']
+  idempotency_key varchar [not null, unique]
+  provider_preference_id varchar
+  checkout_url text
+  last_error text
+  approved_at timestamp
+  rejected_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table refunds {
+  id uuid [pk]
+  payment_id uuid [not null]
+  refund_id uuid [not null]
+  idempotency_key varchar [not null, unique]
+  amount_cents bigint [not null]
+  status varchar [not null, default: 'pending']
+  provider_refund_id varchar
+  created_at timestamp
+}
+
+Table webhook_events {
+  id uuid [pk]
+  mp_event_id varchar [not null, unique]
+  mp_payment_id varchar
+  event_type varchar [not null]
+  raw_payload text
+  processed boolean [not null, default: false]
+  processed_at timestamp
+  error_message text
+  attempt_count int [not null, default: 0]
+  created_at timestamp
+}
+
+Ref: refunds.payment_id > payments.id

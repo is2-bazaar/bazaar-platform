@@ -1,0 +1,19 @@
+Project user_service {
+  database_type: "PostgreSQL"
+}
+
+Table profiles {
+  id uint [pk]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  auth_account_id uint [not null, unique]
+  full_name varchar(255)
+  description text
+  phone varchar(32)
+  birthday date
+  gender varchar(32)
+  image text
+  completed_at timestamp
+}

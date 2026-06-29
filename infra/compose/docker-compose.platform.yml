@@ -93,7 +93,7 @@ services:
       - path: ${BAZAAR_AUTH_SERVICE_PATH}/.env.local
         required: false
     environment:
-      PORT: "${AUTH_SERVICE_PORT:-8080}"
+      PORT: "${AUTH_SERVICE_PORT:-8081}"
       DEPENDENCY_TARGETS: "${AUTH_SERVICE_DEPENDENCY_TARGETS:-auth-db:5432}"
       AUTH_DB_HOST: "${AUTH_DB_HOST:-auth-db}"
       AUTH_DB_PORT: "${AUTH_DB_PORT:-5432}"
@@ -147,7 +147,7 @@ services:
       dockerfile: Dockerfile
     environment:
       SERVICE_NAME: "catalog-service"
-      PORT: "${CATALOG_SERVICE_PORT:-8080}"
+      PORT: "${CATALOG_SERVICE_PORT:-8083}"
       DEPENDENCY_TARGETS: "${CATALOG_SERVICE_DEPENDENCY_TARGETS:-catalog-db:5432}"
       CATALOG_DB_HOST: "${CATALOG_DB_HOST:-catalog-db}"
       CATALOG_DB_PORT: "${CATALOG_DB_PORT:-5432}"
@@ -155,7 +155,7 @@ services:
       CATALOG_DB_PASSWORD: "${CATALOG_DB_PASSWORD:-postgres}"
       CATALOG_DB_NAME: "${CATALOG_DB_NAME:-catalog}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:${AUTH_SERVICE_PORT:-8080}}"
+      AUTH_SERVICE_URL: "${AUTH_SERVICE_URL:-http://auth-service:8081}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
       RABBITMQ_URL: "${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}"
       <<: *rabbitmq-exchanges
@@ -182,7 +182,7 @@ services:
         required: false
     environment:
       SERVICE_NAME: "cart-service"
-      PORT: "${CART_SERVICE_PORT:-8080}"
+      PORT: "${CART_SERVICE_PORT:-8085}"
       CART_DB_HOST: "${CART_DB_HOST:-cart-db}"
       CART_DB_PORT: "${CART_DB_PORT:-5432}"
       CART_DB_USER: "${CART_DB_USER:-postgres}"
@@ -218,7 +218,7 @@ services:
         required: false
     environment:
       SERVICE_NAME: "order-service"
-      PORT: "${ORDER_SERVICE_PORT:-8080}"
+      PORT: "${ORDER_SERVICE_PORT:-8086}"
       ORDER_DB_HOST: "${ORDER_DB_HOST:-orders-db}"
       ORDER_DB_PORT: "${ORDER_DB_PORT:-5432}"
       ORDER_DB_USER: "${ORDER_DB_USER:-postgres}"
@@ -228,8 +228,8 @@ services:
       ORDER_DB_SSLMODE: "${ORDER_DB_SSLMODE:-disable}"
       ORDER_DB_CHANNEL_BINDING: "${ORDER_DB_CHANNEL_BINDING:-}"
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
-      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:${CATALOG_SERVICE_PORT:-8080}}"
-      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:${CART_SERVICE_PORT:-8080}}"
+      CATALOG_SERVICE_URL: "${CATALOG_SERVICE_URL:-http://catalog-service:8083}"
+      CART_SERVICE_URL: "${CART_SERVICE_URL:-http://cart-service:8085}"
       PAYMENT_SERVICE_URL: "${PAYMENT_SERVICE_URL:-http://payment-service:8080}"
       # Expo Go local REQUIERE override en .env.local con exp://<LAN_IP>:8081.
       # Defaults bazaar:// sirven para dev build / produccion (deep linking).
@@ -255,7 +255,7 @@ services:
       rabbitmq:
         condition: service_healthy
     ports:
-      - "${ORDER_SERVICE_HOST_PORT:-18086}:8080"
+      - "${ORDER_SERVICE_HOST_PORT:-18084}:8080"
 
   payment-service:
     build:
@@ -268,14 +268,13 @@ services:
         required: false
     environment:
       SERVICE_NAME: "payment-service"
-      PORT: "8080"
+      PORT: "${PAYMENT_SERVICE_PORT:-8080}"
       DEPENDENCY_TARGETS: "${PAYMENT_SERVICE_DEPENDENCY_TARGETS:-payment-db:5432}"
       PAYMENT_SIMULATION_MODE: "${PAYMENT_SIMULATION_MODE-approved}"
       PAYMENT_PROVIDER: "${PAYMENT_PROVIDER:-mock}"
       MERCADOPAGO_ACCESS_TOKEN: "${MERCADOPAGO_ACCESS_TOKEN:-}"
       PAYMENT_WEBHOOK_URL: "${PAYMENT_WEBHOOK_URL:-}"
       MERCADOPAGO_WEBHOOK_SECRET: "${MERCADOPAGO_WEBHOOK_SECRET:-}"
-      ORDER_SERVICE_URL: "${ORDER_SERVICE_URL:-http://orders-service:8080}"
       PAYMENT_EXPIRATION_MINUTES: "${PAYMENT_EXPIRATION_MINUTES:-30}"
       PAYMENT_DB_HOST: "${PAYMENT_DB_HOST:-payment-db}"
       PAYMENT_DB_PORT: "${PAYMENT_DB_PORT:-5432}"
@@ -287,7 +286,7 @@ services:
       JWT_SECRET: "${JWT_SECRET:-bazaar-dev-secret}"
       INTERNAL_SERVICE_TOKEN: "${INTERNAL_SERVICE_TOKEN:-}"
     ports:
-      - "${PAYMENT_SERVICE_PORT:-18084}:8080"
+      - "${PAYMENT_SERVICE_HOST_PORT:-18086}:8080"
     depends_on:
       payment-db:
         condition: service_healthy

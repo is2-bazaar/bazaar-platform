@@ -1,0 +1,42 @@
+Project cart_service {
+  database_type: "PostgreSQL"
+}
+
+Table carts {
+  id uint [pk]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  user_id uint [not null, unique]
+}
+
+Table cart_items {
+  id uint [pk]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  cart_id uint [not null]
+  product_id uint [not null]
+  seller_id uint [not null]
+  product_name varchar
+  price decimal
+  quantity int [not null, default: 1]
+  image_url text
+
+  indexes {
+    (cart_id, product_id) [unique]
+  }
+}
+
+Table cart_cleanup_operations {
+  id uint [pk]
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  checkout_group_id varchar [not null, unique]
+}
+
+Ref: cart_items.cart_id > carts.id
