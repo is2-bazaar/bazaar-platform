@@ -17,8 +17,8 @@
 # keep-alive use an external pinger (cron-job.org / UptimeRobot).
 set -uo pipefail
 
-INTERVAL="${KEEP_AWAKE_INTERVAL:-300}"   # seconds between rounds (Render sleeps at ~15 min)
-TIMEOUT=30                               # per-request timeout; cold starts are slow
+INTERVAL="${KEEP_AWAKE_INTERVAL:-300}" # seconds between rounds (Render sleeps at ~15 min)
+TIMEOUT=30                             # per-request timeout; cold starts are slow
 
 # notification-service first: it's the consumer that never wakes on its own.
 SERVICES=(
