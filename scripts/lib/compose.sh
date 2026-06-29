@@ -12,7 +12,7 @@ platform_backend_allowed_origins() {
 platform_backend_select_stack() {
   case "${BACKEND_STACK:-full}" in
     full)
-      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments,recommendations"
+      PLATFORM_GATEWAY_ENABLED_SERVICES="auth,user,catalog,cart,orders,payments,notifications"
       # shellcheck disable=SC2034
       PLATFORM_COMPOSE_SERVICES=(
         api-gateway
@@ -24,6 +24,8 @@ platform_backend_select_stack() {
         cart-service
         orders-service
         payment-service
+        notifications-service
+        rabbitmq
         recommendation-service
         recommendation-worker
       )
@@ -127,6 +129,21 @@ platform_compose() {
     platform_warn "INTERNAL_SERVICE_TOKEN no definido en entorno ni en $BAZAAR_AUTH_SERVICE_PATH/.env(.local); los endpoints internos pueden fallar"
   fi
 
+  INTERNAL_SERVICE_TOKEN="$resolved_internal_service_token" \
+    BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH" \
+    BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH" \
+    BAZAAR_CART_SERVICE_PATH="$BAZAAR_CART_SERVICE_PATH" \
+    BAZAAR_CATALOG_SERVICE_PATH="$BAZAAR_CATALOG_SERVICE_PATH" \
+    BAZAAR_ORDER_SERVICE_PATH="$BAZAAR_ORDER_SERVICE_PATH" \
+    BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH" \
+    BAZAAR_RECOMMENDATION_SERVICE_PATH="$BAZAAR_RECOMMENDATION_SERVICE_PATH" \
+    BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH" \
+    BAZAAR_NOTIFICATIONS_SERVICE_PATH="$BAZAAR_NOTIFICATIONS_SERVICE_PATH" \
+    CART_DB_NAME="${CART_DB_NAME:-cart_db}" \
+    JWT_SECRET="$resolved_jwt_secret" \
+    GATEWAY_ALLOWED_ORIGINS="$allowed_origins" \
+    GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES" \
+    docker compose -f "$PLATFORM_COMPOSE_FILE" "$@"
   export INTERNAL_SERVICE_TOKEN="$resolved_internal_service_token"
   export BAZAAR_API_GATEWAY_PATH="$BAZAAR_API_GATEWAY_PATH"
   export BAZAAR_AUTH_SERVICE_PATH="$BAZAAR_AUTH_SERVICE_PATH"
@@ -136,12 +153,14 @@ platform_compose() {
   export BAZAAR_PAYMENT_SERVICE_PATH="$BAZAAR_PAYMENT_SERVICE_PATH"
   export BAZAAR_RECOMMENDATION_SERVICE_PATH="$BAZAAR_RECOMMENDATION_SERVICE_PATH"
   export BAZAAR_USER_SERVICE_PATH="$BAZAAR_USER_SERVICE_PATH"
+  export BAZAAR_NOTIFICATIONS_SERVICE_PATH="$BAZAAR_NOTIFICATIONS_SERVICE_PATH"
   export CART_DB_NAME="${CART_DB_NAME:-cart_db}"
   export JWT_SECRET="$resolved_jwt_secret"
   export GATEWAY_ALLOWED_ORIGINS="$allowed_origins"
   export GATEWAY_ENABLED_SERVICES="$PLATFORM_GATEWAY_ENABLED_SERVICES"
 
   platform_export_if_set \
+    RABBITMQ_URL \
     PAYMENT_PROVIDER \
     PAYMENT_SIMULATION_MODE \
     MERCADOPAGO_ACCESS_TOKEN \
