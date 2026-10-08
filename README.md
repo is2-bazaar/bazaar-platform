@@ -364,3 +364,6 @@ CLEANUP_RUN_DIR=tmp/e2e-cleanup-dry-run-<timestamp> \
 -`Bazaar-platform` https://github.com/is2-bazaar/bazaar-platform.git
 
 -`Bazaar-backend-catalog-service` https://github.com/is2-bazaar/bazaar-backend-catalog-service.git
+-`Bazaar-backend-notification-service` https://github.com/is2-bazaar/bazaar-backend-notification-service.git
+
+-`Bazaar-backend-recommendation-service` https://github.com/is2-bazaar/bazaar-backend-recommendation-service.git
