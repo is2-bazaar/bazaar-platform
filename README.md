@@ -345,25 +345,24 @@ CLEANUP_RUN_DIR=tmp/e2e-cleanup-dry-run-<timestamp> \
 - Borra en orden de dependencias (order_status → orders → checkout_groups → payments → carts → reservations → products → perfiles → usuarios)
 
 ## Links a repositorios
--`Bazaar-backend-api-gateway` https://github.com/is2-bazaar/Bazaar-backend-api-gateway.git
 
--`Bazaar-backend-auth-service` https://github.com/is2-bazaar/bazaar-backend-auth-service.git
+### Plataforma e infraestructura
 
--`Bazaar-backend-cart-service` https://github.com/is2-bazaar/bazaar-backend-cart-service.git
+- [Bazaar Platform](https://github.com/is2-bazaar/bazaar-platform)
+- [API Gateway](https://github.com/is2-bazaar/Bazaar-backend-api-gateway)
 
--`Bazaar-backend-user-service` https://github.com/is2-bazaar/bazaar-backend-user-service.git
+### Frontend
 
--`Bazaar-backend-order-service` https://github.com/is2-bazaar/bazaar-backend-order-service.git
+- [Mobile App](https://github.com/is2-bazaar/bazaar-mobile)
+- [Backoffice](https://github.com/is2-bazaar/bazaar-backoffice)
 
--`Bazaar-backend-payment-service` https://github.com/is2-bazaar/bazaar-backend-payment-service.git
+### Backend — Microservicios
 
--`Bazaar-mobile` https://github.com/is2-bazaar/bazaar-mobile.git
-
--`Bazaar-backoffice` https://github.com/is2-bazaar/bazaar-backoffice.git
-
--`Bazaar-platform` https://github.com/is2-bazaar/bazaar-platform.git
-
--`Bazaar-backend-catalog-service` https://github.com/is2-bazaar/bazaar-backend-catalog-service.git
--`Bazaar-backend-notification-service` https://github.com/is2-bazaar/bazaar-backend-notification-service.git
-
--`Bazaar-backend-recommendation-service` https://github.com/is2-bazaar/bazaar-backend-recommendation-service.git
+- [Auth Service](https://github.com/is2-bazaar/bazaar-backend-auth-service)
+- [User Service](https://github.com/is2-bazaar/bazaar-backend-user-service)
+- [Catalog Service](https://github.com/is2-bazaar/bazaar-backend-catalog-service)
+- [Cart Service](https://github.com/is2-bazaar/bazaar-backend-cart-service)
+- [Order Service](https://github.com/is2-bazaar/bazaar-backend-order-service)
+- [Payment Service](https://github.com/is2-bazaar/bazaar-backend-payment-service)
+- [Notification Service](https://github.com/is2-bazaar/bazaar-backend-notification-service)
+- [Recommendation Service](https://github.com/is2-bazaar/bazaar-backend-recommendation-service)
